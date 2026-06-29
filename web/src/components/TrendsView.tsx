@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TrendMarkerSummary, TrendSeries } from "@shared/schema";
 import {
   CartesianGrid,
@@ -116,6 +116,13 @@ export function TrendsView({ model }: TrendsViewProps) {
   const [showInsights, setShowInsights] = useState(false);
   const [hasCachedInsight, setHasCachedInsight] = useState(false);
   const [loadingCachedInsight, setLoadingCachedInsight] = useState(false);
+  const insightStreamRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    insightStreamRef.current?.abort();
+    insightStreamRef.current = null;
+    setInsightLoading(false);
+  }, [selected]);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,6 +233,11 @@ export function TrendsView({ model }: TrendsViewProps) {
   const handleGetInsights = async () => {
     if (!selected || chartRows.length === 0) return;
 
+    const marker = selected;
+    insightStreamRef.current?.abort();
+    const controller = new AbortController();
+    insightStreamRef.current = controller;
+
     setShowInsights(true);
     setInsightLoading(true);
     setInsightStatus("Analyzing trend with local LLM…");
@@ -234,22 +246,36 @@ export function TrendsView({ model }: TrendsViewProps) {
     setInsightError(null);
 
     try {
-      await fetchTrendInsights(selected, model || undefined, (event) => {
-        if (event.type === "status") {
-          setInsightStatus(event.message);
-        } else if (event.type === "token") {
-          if (event.phase === "thinking") {
-            setThinkingText((prev) => prev + event.content);
-          } else {
-            setContentText((prev) => prev + event.content);
+      await fetchTrendInsights(
+        marker,
+        model || undefined,
+        (event) => {
+          if (controller.signal.aborted) return;
+
+          if (event.type === "status") {
+            setInsightStatus(event.message);
+          } else if (event.type === "token") {
+            if (event.phase === "thinking") {
+              setThinkingText((prev) => prev + event.content);
+            } else {
+              setContentText((prev) => prev + event.content);
+            }
           }
-        }
-      });
+        },
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
       setHasCachedInsight(true);
     } catch (e) {
+      if (controller.signal.aborted) return;
       setInsightError(e instanceof Error ? e.message : "Failed to generate insights");
     } finally {
-      setInsightLoading(false);
+      if (insightStreamRef.current === controller) {
+        insightStreamRef.current = null;
+      }
+      if (!controller.signal.aborted) {
+        setInsightLoading(false);
+      }
     }
   };
 

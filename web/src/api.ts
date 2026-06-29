@@ -34,6 +34,7 @@ async function readNdjsonStream<T>(
   parseLine: (line: string) => T | null,
   onEvent: ((event: T) => void) | undefined,
   onComplete: (event: T) => boolean,
+  signal?: AbortSignal,
 ): Promise<void> {
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -49,36 +50,54 @@ async function readNdjsonStream<T>(
   let buffer = "";
   let completed = false;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  const abortError = () => new DOMException("The operation was aborted.", "AbortError");
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+  const onAbort = () => {
+    void reader.cancel();
+  };
+  signal?.addEventListener("abort", onAbort);
 
-    for (const line of lines) {
-      const event = parseLine(line);
-      if (!event) continue;
+  try {
+    while (true) {
+      if (signal?.aborted) throw abortError();
 
-      onEvent?.(event);
+      const { done, value } = await reader.read();
+      if (done) break;
 
-      if (onComplete(event)) {
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (signal?.aborted) throw abortError();
+
+        const event = parseLine(line);
+        if (!event) continue;
+
+        onEvent?.(event);
+
+        if (onComplete(event)) {
+          completed = true;
+        }
+      }
+    }
+
+    if (signal?.aborted) throw abortError();
+
+    const trailing = parseLine(buffer);
+    if (trailing) {
+      onEvent?.(trailing);
+      if (onComplete(trailing)) {
         completed = true;
       }
     }
-  }
 
-  const trailing = parseLine(buffer);
-  if (trailing) {
-    onEvent?.(trailing);
-    if (onComplete(trailing)) {
-      completed = true;
+    if (!completed) {
+      if (signal?.aborted) throw abortError();
+      throw new Error("Stream ended without a result");
     }
-  }
-
-  if (!completed) {
-    throw new Error("Stream ended without a result");
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
   }
 }
 
@@ -147,11 +166,13 @@ export async function fetchTrendInsights(
   marker: string,
   model?: string,
   onEvent?: (event: TrendInsightStreamEvent) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const response = await fetch("/api/trends/insights", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ marker, model }),
+    signal,
   });
 
   await readNdjsonStream(
@@ -164,6 +185,7 @@ export async function fetchTrendInsights(
       }
       return event.type === "done";
     },
+    signal,
   );
 }
 
