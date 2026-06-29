@@ -66,7 +66,20 @@ async function readOllamaStream(
     idleTimer = undefined;
   };
 
-  armIdleTimeout();
+  const processLine = (line: string) => {
+    if (!line.trim()) return;
+    const chunk = JSON.parse(line) as OllamaStreamChunk;
+    const contentDelta = chunk.message?.content ?? "";
+    const thinkingDelta = chunk.message?.thinking ?? "";
+
+    if (thinkingDelta) {
+      onToken(thinkingDelta, "thinking");
+    }
+    if (contentDelta) {
+      content += contentDelta;
+      onToken(contentDelta, "content");
+    }
+  };
 
   try {
     while (true) {
@@ -80,19 +93,12 @@ async function readOllamaStream(
       buffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        if (!line.trim()) continue;
-        const chunk = JSON.parse(line) as OllamaStreamChunk;
-        const contentDelta = chunk.message?.content ?? "";
-        const thinkingDelta = chunk.message?.thinking ?? "";
-
-        if (thinkingDelta) {
-          onToken(thinkingDelta, "thinking");
-        }
-        if (contentDelta) {
-          content += contentDelta;
-          onToken(contentDelta, "content");
-        }
+        processLine(line);
       }
+    }
+
+    if (buffer) {
+      processLine(buffer);
     }
   } finally {
     disarmIdleTimeout();
