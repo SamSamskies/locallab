@@ -171,7 +171,12 @@ export default function App() {
             <PanelView panel={selectedPanel} />
           ) : (
             <div className="card empty-state">
-              <h2>Upload a lab report to begin</h2>
+              <h2>
+                {panels.length > 0
+                  ? "Select a report in the sidebar or upload a new lab report"
+                  : "Upload a lab report to begin"}
+              </h2>
+         
               <p>
                 Drop a text-based PDF on the left. LocalLab will extract your markers,
                 flag out-of-range values, and generate plain-language insights — all
