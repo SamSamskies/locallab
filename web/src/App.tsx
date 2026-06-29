@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PanelListItem, PanelResponse } from "@shared/schema";
 import { fetchModels, fetchPanel, fetchPanels, uploadPanel } from "./api";
+import { formatDate } from "./formatDate";
 import { ExtractionProgress } from "./components/ExtractionProgress";
 import { ModelSelector } from "./components/ModelSelector";
 import { PanelView } from "./components/PanelView";
@@ -119,8 +120,7 @@ export default function App() {
                     >
                       <div className="panel-item-title">{p.label}</div>
                       <div className="panel-item-meta">
-                        {p.markerCount} markers ·{" "}
-                        {new Date(p.createdAt).toLocaleDateString()}
+                        {p.markerCount} markers · {formatDate(p.collectedAt, {})}
                       </div>
                     </button>
                   </li>
