@@ -26,8 +26,7 @@ export function PanelView({ panel }: PanelViewProps) {
         <div>
           <h2>{panel.label}</h2>
           <div className="panel-meta">
-            {formatDate(panel.collectedAt)} · {panel.sourceFilename} ·{" "}
-            {panel.markers.length} markers
+            {formatDate(panel.collectedAt)} · {panel.markers.length} markers
           </div>
         </div>
       </div>
