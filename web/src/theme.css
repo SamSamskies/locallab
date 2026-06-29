@@ -13,6 +13,7 @@
   --flag-normal: #5a9e6f;
   --ref-range-fill: color-mix(in srgb, var(--flag-normal) 26%, transparent);
   --ref-range-stroke: color-mix(in srgb, var(--flag-normal) 45%, transparent);
+  --chart-line: var(--text-secondary);
   --flag-unknown: #7a756c;
   --border: rgba(232, 230, 225, 0.08);
   --border-strong: rgba(232, 230, 225, 0.14);
@@ -825,7 +826,6 @@ h3 {
 
 .chart-tooltip-value {
   font-family: var(--font-mono);
-  color: var(--accent);
   font-weight: 500;
 }
 

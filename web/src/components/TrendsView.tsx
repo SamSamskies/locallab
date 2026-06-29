@@ -36,14 +36,14 @@ function flagColor(flag: string): string {
   return FLAG_COLORS[flag] ?? FLAG_COLORS.unknown;
 }
 
-function FlagDot(props: DotProps & { payload?: ChartRow }) {
-  const { cx, cy, payload } = props;
+function FlagDot(props: DotProps & { payload?: ChartRow; active?: boolean }) {
+  const { cx, cy, payload, active } = props;
   if (cx == null || cy == null) return null;
   return (
     <circle
       cx={cx}
       cy={cy}
-      r={5}
+      r={active ? 6 : 5}
       fill={flagColor(payload?.flag ?? "unknown")}
       stroke="var(--bg-surface)"
       strokeWidth={2}
@@ -92,7 +92,9 @@ function ChartTooltip({ active, payload }: ChartTooltipProps) {
     <div className="chart-tooltip">
       <div className="chart-tooltip-label">{row.panelLabel}</div>
       <div className="chart-tooltip-date">{row.date}</div>
-      <div className="chart-tooltip-value">{valueText}</div>
+      <div className="chart-tooltip-value" style={{ color: flagColor(row.flag) }}>
+        {valueText}
+      </div>
     </div>
   );
 }
@@ -382,10 +384,10 @@ export function TrendsView({ model }: TrendsViewProps) {
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="var(--accent)"
+                  stroke="var(--chart-line)"
                   strokeWidth={2}
                   dot={<FlagDot />}
-                  activeDot={{ r: 6 }}
+                  activeDot={<FlagDot active />}
                 />
               </ComposedChart>
             </ResponsiveContainer>
