@@ -49,9 +49,3 @@ Runs TypeScript type-checking (`tsc --noEmit`) and unit tests.
 | `PORT` | `3001` | Express API port |
 
 You can also switch models in the web UI.
-
-## Limitations (v1)
-
-- Text-based PDFs only (no OCR for scanned/image PDFs)
-- No marker editing or personalized reference ranges yet
-- Trend charts planned for a future slice
