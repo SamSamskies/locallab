@@ -5,10 +5,13 @@ interface PanelViewProps {
   panel: PanelResponse;
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "Date unknown";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+function formatDate(value: string | null): string {
+  if (!value) return "Date unknown";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const d = match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    : new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString(undefined, {
     year: "numeric",
     month: "long",
