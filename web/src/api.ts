@@ -1,4 +1,11 @@
-import type { ModelInfo, PanelListItem, PanelResponse, UploadStreamEvent } from "@shared/schema";
+import type {
+  ModelInfo,
+  PanelListItem,
+  PanelResponse,
+  TrendMarkerSummary,
+  TrendSeries,
+  UploadStreamEvent,
+} from "@shared/schema";
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -78,6 +85,16 @@ export async function fetchPanels(): Promise<PanelListItem[]> {
 
 export async function fetchPanel(id: number): Promise<PanelResponse> {
   return handleResponse(await fetch(`/api/panels/${id}`));
+}
+
+export async function fetchTrendMarkers(): Promise<TrendMarkerSummary[]> {
+  return handleResponse(await fetch("/api/trends/markers"));
+}
+
+export async function fetchTrendSeries(marker: string): Promise<TrendSeries> {
+  return handleResponse(
+    await fetch(`/api/trends?marker=${encodeURIComponent(marker)}`),
+  );
 }
 
 export async function uploadPanel(

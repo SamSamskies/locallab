@@ -5,7 +5,10 @@ import { formatDate } from "./formatDate";
 import { ExtractionProgress } from "./components/ExtractionProgress";
 import { ModelSelector } from "./components/ModelSelector";
 import { PanelView } from "./components/PanelView";
+import { TrendsView } from "./components/TrendsView";
 import { UploadDropzone } from "./components/UploadDropzone";
+
+type MainView = "panel" | "trends";
 
 export default function App() {
   const [panels, setPanels] = useState<PanelListItem[]>([]);
@@ -18,6 +21,7 @@ export default function App() {
   const [thinkingText, setThinkingText] = useState("");
   const [contentText, setContentText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<MainView>("panel");
 
   const loadPanels = useCallback(async () => {
     const list = await fetchPanels();
@@ -49,6 +53,7 @@ export default function App() {
   };
 
   const handleUpload = async (file: File) => {
+    setView("panel");
     setLoading(true);
     setUploadStatus("Reading PDF…");
     setThinkingText("");
@@ -131,9 +136,32 @@ export default function App() {
         </aside>
 
         <main className="main">
+          <div className="tabs" role="tablist" aria-label="Main view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "panel"}
+              className={`tab ${view === "panel" ? "active" : ""}`}
+              onClick={() => setView("panel")}
+            >
+              Panel
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "trends"}
+              className={`tab ${view === "trends" ? "active" : ""}`}
+              onClick={() => setView("trends")}
+            >
+              Trends
+            </button>
+          </div>
+
           {error && <div className="error-banner">{error}</div>}
 
-          {loading ? (
+          {view === "trends" ? (
+            <TrendsView />
+          ) : loading ? (
             <ExtractionProgress
               status={uploadStatus}
               thinkingText={thinkingText}
