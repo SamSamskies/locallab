@@ -1,4 +1,5 @@
 import type {
+  CachedTrendInsight,
   ModelInfo,
   PanelListItem,
   PanelResponse,
@@ -130,6 +131,16 @@ export async function fetchTrendSeries(marker: string): Promise<TrendSeries> {
   return handleResponse(
     await fetch(`/api/trends?marker=${encodeURIComponent(marker)}`),
   );
+}
+
+export async function fetchCachedTrendInsight(
+  marker: string,
+): Promise<CachedTrendInsight | null> {
+  const response = await fetch(
+    `/api/trends/insights?marker=${encodeURIComponent(marker)}`,
+  );
+  if (response.status === 404) return null;
+  return handleResponse(response);
 }
 
 export async function fetchTrendInsights(

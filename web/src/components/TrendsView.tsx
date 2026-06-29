@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { DotProps } from "recharts";
-import { fetchTrendInsights, fetchTrendMarkers, fetchTrendSeries } from "../api";
+import { fetchCachedTrendInsight, fetchTrendInsights, fetchTrendMarkers, fetchTrendSeries } from "../api";
 import { formatDate } from "../formatDate";
 
 const FLAG_COLORS: Record<string, string> = {
@@ -113,6 +113,8 @@ export function TrendsView({ model }: TrendsViewProps) {
   const [contentText, setContentText] = useState("");
   const [insightError, setInsightError] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(false);
+  const [hasCachedInsight, setHasCachedInsight] = useState(false);
+  const [loadingCachedInsight, setLoadingCachedInsight] = useState(false);
   const insightOutputRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
@@ -171,13 +173,48 @@ export function TrendsView({ model }: TrendsViewProps) {
   }, [selected]);
 
   useEffect(() => {
-    setShowInsights(false);
-    setInsightLoading(false);
-    setInsightStatus("");
-    setThinkingText("");
-    setContentText("");
+    if (!selected || !series || series.points.length === 0) {
+      setShowInsights(false);
+      setHasCachedInsight(false);
+      setThinkingText("");
+      setContentText("");
+      setInsightError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingCachedInsight(true);
     setInsightError(null);
-  }, [selected]);
+
+    fetchCachedTrendInsight(selected)
+      .then((cached) => {
+        if (cancelled) return;
+        if (cached) {
+          setShowInsights(true);
+          setHasCachedInsight(true);
+          setThinkingText("");
+          setContentText(cached.content);
+        } else {
+          setShowInsights(false);
+          setHasCachedInsight(false);
+          setThinkingText("");
+          setContentText("");
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setInsightError(e instanceof Error ? e.message : "Failed to load cached insights");
+        setShowInsights(false);
+        setHasCachedInsight(false);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCachedInsight(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, series]);
 
   useEffect(() => {
     const el = insightOutputRef.current;
@@ -215,6 +252,7 @@ export function TrendsView({ model }: TrendsViewProps) {
           }
         }
       });
+      setHasCachedInsight(true);
     } catch (e) {
       setInsightError(e instanceof Error ? e.message : "Failed to generate insights");
     } finally {
@@ -277,9 +315,13 @@ export function TrendsView({ model }: TrendsViewProps) {
               type="button"
               className="btn btn-primary"
               onClick={handleGetInsights}
-              disabled={insightLoading}
+              disabled={insightLoading || loadingCachedInsight}
             >
-              {insightLoading ? "Generating insights…" : "Get insights"}
+              {insightLoading
+                ? "Generating insights…"
+                : hasCachedInsight
+                  ? "Refresh insights"
+                  : "Get insights"}
             </button>
           </div>
           <div className="chart-container">

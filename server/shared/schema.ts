@@ -117,6 +117,13 @@ export type TrendInsightStreamEvent =
   | { type: "done" }
   | { type: "error"; error: string };
 
+export const cachedTrendInsightSchema = z.object({
+  content: z.string(),
+  updatedAt: z.string(),
+});
+
+export type CachedTrendInsight = z.infer<typeof cachedTrendInsightSchema>;
+
 export function normalizeFlag(
   flag: string | undefined,
   value: number | null | undefined,

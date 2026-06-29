@@ -1,5 +1,9 @@
 import { Router, type Response } from "express";
 import { db } from "../db/client";
+import {
+  getCachedTrendInsight,
+  saveCachedTrendInsight,
+} from "../services/trendInsightCache";
 import { generateTrendInsight } from "../services/trendInsights";
 import { getTrendMarkers, getTrendSeries } from "../services/trends";
 import type { TrendInsightStreamEvent } from "../shared/schema";
@@ -27,6 +31,29 @@ trendsRouter.get("/", (req, res) => {
   res.json(getTrendSeries(db, marker));
 });
 
+trendsRouter.get("/insights", (req, res) => {
+  const marker = typeof req.query.marker === "string" ? req.query.marker.trim() : "";
+
+  if (!marker) {
+    res.status(400).json({ error: "marker query parameter is required" });
+    return;
+  }
+
+  const series = getTrendSeries(db, marker);
+  if (series.points.length === 0) {
+    res.status(404).json({ error: "No trend data for this marker" });
+    return;
+  }
+
+  const cached = getCachedTrendInsight(db, marker, series);
+  if (!cached) {
+    res.status(404).json({ error: "No cached insight for this marker" });
+    return;
+  }
+
+  res.json(cached);
+});
+
 trendsRouter.post("/insights", async (req, res) => {
   const marker = typeof req.body?.marker === "string" ? req.body.marker.trim() : "";
   const model = typeof req.body?.model === "string" ? req.body.model : undefined;
@@ -52,9 +79,14 @@ trendsRouter.post("/insights", async (req, res) => {
 
   try {
     send({ type: "status", message: "Analyzing trend with local LLM…" });
+    let contentText = "";
     await generateTrendInsight(series, (content, phase) => {
+      if (phase === "content") {
+        contentText += content;
+      }
       send({ type: "token", content, phase });
     }, model);
+    saveCachedTrendInsight(db, marker, series, contentText);
     send({ type: "done" });
     res.end();
   } catch (error) {
