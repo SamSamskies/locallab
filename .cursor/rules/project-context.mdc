@@ -1,0 +1,32 @@
+---
+description: LocalLab stack, test commands, and workflow reminders
+alwaysApply: true
+---
+
+# LocalLab Project Context
+
+## Stack
+
+- **App**: Privacy-first blood work analyzer — upload lab PDFs, extract markers via local Ollama LLM, store in SQLite, view in web UI
+- **Frontend** (`web/`): React 19, Vite, plain CSS (`web/src/theme.css`)
+- **Backend** (`server/`): Express 5, TypeScript (ESM), `tsx` for dev
+- **Database**: SQLite via `better-sqlite3` + Drizzle ORM (`server/db/`)
+- **LLM**: Ollama (`OLLAMA_URL`, `OLLAMA_MODEL` in `.env`)
+- **Validation**: Zod
+- **PDF parsing**: `unpdf`
+- **Shared types**: `server/shared/` (import as `@shared/*`)
+
+## Test & Verify
+
+```bash
+npm test          # vitest run — server/**/*.test.ts only
+npm run verify    # tsc --noEmit && vitest run (preferred before finishing work)
+```
+
+Run tests after code changes. Use `npm run verify` when touching types or shared modules.
+
+## Before Editing
+
+1. **Read the diff** — run `git diff` (and `git status`) to see what is already changed before adding more edits
+2. **Read surrounding code** — match existing patterns in the file and its neighbors
+3. **Keep scope minimal** — only change what the task requires
