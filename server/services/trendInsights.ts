@@ -28,7 +28,7 @@ Write plain-language insights about:
 - Notable changes between measurements
 - Practical context (without diagnosing or prescribing)
 
-Use short paragraphs or bullet points. Do not use JSON. Be concise but informative.
+Use short paragraphs or bullet points. Format your response in markdown. Be concise but informative.
 
 Historical data (oldest to newest):
 ${rows}

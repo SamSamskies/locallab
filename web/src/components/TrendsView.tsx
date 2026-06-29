@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TrendMarkerSummary, TrendSeries } from "@shared/schema";
 import {
   CartesianGrid,
@@ -13,6 +13,7 @@ import {
 import type { DotProps } from "recharts";
 import { fetchCachedTrendInsight, fetchTrendInsights, fetchTrendMarkers, fetchTrendSeries } from "../api";
 import { formatDate } from "../formatDate";
+import { MarkdownContent } from "./MarkdownContent";
 
 const FLAG_COLORS: Record<string, string> = {
   low: "#e8a838",
@@ -115,7 +116,6 @@ export function TrendsView({ model }: TrendsViewProps) {
   const [showInsights, setShowInsights] = useState(false);
   const [hasCachedInsight, setHasCachedInsight] = useState(false);
   const [loadingCachedInsight, setLoadingCachedInsight] = useState(false);
-  const insightOutputRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -215,13 +215,6 @@ export function TrendsView({ model }: TrendsViewProps) {
       cancelled = true;
     };
   }, [selected, series]);
-
-  useEffect(() => {
-    const el = insightOutputRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [thinkingText, contentText]);
 
   const chartRows = useMemo(
     () => (series ? toChartRows(series) : []),
@@ -378,17 +371,19 @@ export function TrendsView({ model }: TrendsViewProps) {
               </div>
               {insightError && <div className="error-banner">{insightError}</div>}
               {!insightError && (
-                <pre ref={insightOutputRef} className="extraction-stream trend-insights-stream">
+                <div className="trend-insights-body">
                   {thinkingText ? (
-                    <span className="extraction-thinking">{thinkingText}</span>
+                    <details className="trend-insights-thinking" open={insightLoading}>
+                      <summary>Model reasoning</summary>
+                      <pre>{thinkingText}</pre>
+                    </details>
                   ) : null}
                   {contentText ? (
-                    <span className="extraction-content">{contentText}</span>
+                    <MarkdownContent content={contentText} />
+                  ) : insightLoading ? (
+                    <p className="trend-insights-waiting">{insightStatus}</p>
                   ) : null}
-                  {insightLoading && !thinkingText && !contentText ? (
-                    <span className="extraction-waiting">{insightStatus}</span>
-                  ) : null}
-                </pre>
+                </div>
               )}
             </div>
           )}

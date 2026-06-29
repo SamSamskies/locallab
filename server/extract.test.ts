@@ -145,7 +145,7 @@ describe("buildTrendInsightPrompt", () => {
     expect(prompt).toContain("2024-01-15");
     expect(prompt).toContain("2024-06-01");
     expect(prompt).toContain("110 mg/dL");
-    expect(prompt).toContain("Do not use JSON");
+    expect(prompt).toContain("Format your response in markdown");
   });
 });
 
