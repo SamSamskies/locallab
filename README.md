@@ -2,6 +2,8 @@
 
 A privacy-first, fully-local web app for analyzing blood work results. Upload a lab PDF, extract structured markers with a local Ollama LLM, store results in SQLite, and view insights and trends.
 
+![LocalLab web UI](docs/screenshot.png)
+
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) 20+
