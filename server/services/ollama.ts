@@ -117,18 +117,18 @@ async function readOllamaStream(
   return content;
 }
 
-export async function chatJsonStreaming<T>(
+async function chatRequest(
   prompt: string,
-  onToken: (token: string, phase: StreamTokenPhase) => void,
-  model?: string,
-): Promise<T> {
+  model: string | undefined,
+  format: "json" | undefined,
+): Promise<Response> {
   const response = await fetch(`${getOllamaUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: model ?? getDefaultModel(),
       stream: true,
-      format: "json",
+      ...(format ? { format } : {}),
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -138,6 +138,24 @@ export async function chatJsonStreaming<T>(
     throw new Error(`Ollama request failed (${response.status}): ${body}`);
   }
 
+  return response;
+}
+
+export async function chatStreaming(
+  prompt: string,
+  onToken: (token: string, phase: StreamTokenPhase) => void,
+  model?: string,
+): Promise<string> {
+  const response = await chatRequest(prompt, model, undefined);
+  return readOllamaStream(response, onToken, getOllamaTimeoutMs());
+}
+
+export async function chatJsonStreaming<T>(
+  prompt: string,
+  onToken: (token: string, phase: StreamTokenPhase) => void,
+  model?: string,
+): Promise<T> {
+  const response = await chatRequest(prompt, model, "json");
   const content = await readOllamaStream(response, onToken, getOllamaTimeoutMs());
   return JSON.parse(content) as T;
 }

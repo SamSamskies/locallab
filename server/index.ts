@@ -3,6 +3,7 @@ import express from "express";
 import multer from "multer";
 import { modelsRouter } from "./routes/models";
 import { panelsRouter } from "./routes/panels";
+import { trendsRouter } from "./routes/trends";
 
 const app = express();
 const upload = multer({
@@ -21,6 +22,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/models", modelsRouter);
 app.use("/api/panels", upload.single("file"), panelsRouter);
+app.use("/api/trends", trendsRouter);
 
 app.listen(port, () => {
   console.log(`API listening on http://localhost:${port}`);

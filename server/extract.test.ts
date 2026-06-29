@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildExtractionPrompt } from "./services/extract";
+import { buildTrendInsightPrompt } from "./services/trendInsights";
 import { extractPdfText } from "./services/pdf";
 import {
   normalizeFlag,
@@ -105,6 +106,46 @@ describe("buildExtractionPrompt", () => {
     const prompt = buildExtractionPrompt(longText, "big.pdf");
     expect(prompt).toContain("[TRUNCATED]");
     expect(prompt.length).toBeLessThan(longText.length);
+  });
+});
+
+describe("buildTrendInsightPrompt", () => {
+  test("includes marker name and historical data points", () => {
+    const prompt = buildTrendInsightPrompt({
+      marker: "Glucose",
+      points: [
+        {
+          panelId: 1,
+          panelLabel: "Panel A",
+          collectedAt: "2024-01-15",
+          value: 95,
+          unit: "mg/dL",
+          refLow: 70,
+          refHigh: 100,
+          refText: "70-100",
+          flag: "normal",
+          category: "Metabolic",
+        },
+        {
+          panelId: 2,
+          panelLabel: "Panel B",
+          collectedAt: "2024-06-01",
+          value: 110,
+          unit: "mg/dL",
+          refLow: 70,
+          refHigh: 100,
+          refText: "70-100",
+          flag: "high",
+          category: "Metabolic",
+        },
+      ],
+    });
+
+    expect(prompt).toContain('"Glucose"');
+    expect(prompt).toContain("2024-01-15");
+    expect(prompt).toContain("2024-06-01");
+    expect(prompt).toContain("110 mg/dL");
+    expect(prompt).toContain("Format your response in markdown");
   });
 });
 

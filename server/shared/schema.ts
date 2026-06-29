@@ -68,11 +68,61 @@ export const modelInfoSchema = z.object({
 
 export type ModelInfo = z.infer<typeof modelInfoSchema>;
 
+export const trendPointSchema = z.object({
+  panelId: z.number(),
+  panelLabel: z.string(),
+  collectedAt: z.string(),
+  value: z.number(),
+  unit: z.string().nullable(),
+  refLow: z.number().nullable(),
+  refHigh: z.number().nullable(),
+  refText: z.string().nullable(),
+  flag: markerFlagSchema,
+  category: z.string().nullable(),
+});
+
+export type TrendPoint = z.infer<typeof trendPointSchema>;
+
+export const trendMarkerSummarySchema = z.object({
+  name: z.string(),
+  units: z.array(z.string()),
+  category: z.string().nullable(),
+  dataPointCount: z.number(),
+  firstCollectedAt: z.string().nullable(),
+  lastCollectedAt: z.string().nullable(),
+  latestValue: z.number().nullable(),
+  latestRefLow: z.number().nullable(),
+  latestRefHigh: z.number().nullable(),
+  latestFlag: markerFlagSchema.nullable(),
+});
+
+export type TrendMarkerSummary = z.infer<typeof trendMarkerSummarySchema>;
+
+export const trendSeriesSchema = z.object({
+  marker: z.string(),
+  points: z.array(trendPointSchema),
+});
+
+export type TrendSeries = z.infer<typeof trendSeriesSchema>;
+
 export type UploadStreamEvent =
   | { type: "status"; message: string }
   | { type: "token"; content: string; phase: "thinking" | "content" }
   | { type: "done"; panel: PanelResponse }
   | { type: "error"; error: string };
+
+export type TrendInsightStreamEvent =
+  | { type: "status"; message: string }
+  | { type: "token"; content: string; phase: "thinking" | "content" }
+  | { type: "done" }
+  | { type: "error"; error: string };
+
+export const cachedTrendInsightSchema = z.object({
+  content: z.string(),
+  updatedAt: z.string(),
+});
+
+export type CachedTrendInsight = z.infer<typeof cachedTrendInsightSchema>;
 
 export function normalizeFlag(
   flag: string | undefined,

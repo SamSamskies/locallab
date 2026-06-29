@@ -27,7 +27,18 @@ export const markers = sqliteTable("markers", {
   category: text("category"),
 });
 
+export const trendInsights = sqliteTable("trend_insights", {
+  markerKey: text("marker_key").primaryKey(),
+  contentText: text("content_text").notNull(),
+  dataFingerprint: text("data_fingerprint").notNull(),
+  updatedAt: text("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export type Panel = typeof panels.$inferSelect;
 export type Marker = typeof markers.$inferSelect;
+export type TrendInsight = typeof trendInsights.$inferSelect;
 export type NewPanel = typeof panels.$inferInsert;
 export type NewMarker = typeof markers.$inferInsert;
+export type NewTrendInsight = typeof trendInsights.$inferInsert;
