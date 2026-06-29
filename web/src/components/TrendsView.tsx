@@ -373,8 +373,9 @@ export function TrendsView({ model }: TrendsViewProps) {
                   <ReferenceArea
                     y1={refLow}
                     y2={refHigh}
-                    fill="rgba(90, 158, 111, 0.12)"
-                    stroke="none"
+                    fill="var(--ref-range-fill)"
+                    stroke="var(--ref-range-stroke)"
+                    strokeWidth={1}
                   />
                 )}
                 <Tooltip content={<ChartTooltip />} />

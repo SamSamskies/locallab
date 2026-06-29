@@ -11,6 +11,8 @@
   --flag-low: #e8a838;
   --flag-high: #d94f4f;
   --flag-normal: #5a9e6f;
+  --ref-range-fill: color-mix(in srgb, var(--flag-normal) 26%, transparent);
+  --ref-range-stroke: color-mix(in srgb, var(--flag-normal) 45%, transparent);
   --flag-unknown: #7a756c;
   --border: rgba(232, 230, 225, 0.08);
   --border-strong: rgba(232, 230, 225, 0.14);
