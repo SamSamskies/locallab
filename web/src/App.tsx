@@ -160,7 +160,7 @@ export default function App() {
           {error && <div className="error-banner">{error}</div>}
 
           {view === "trends" ? (
-            <TrendsView />
+            <TrendsView model={model} />
           ) : loading ? (
             <ExtractionProgress
               status={uploadStatus}

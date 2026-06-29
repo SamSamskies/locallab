@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TrendMarkerSummary, TrendSeries } from "@shared/schema";
 import {
   CartesianGrid,
@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { DotProps } from "recharts";
-import { fetchTrendMarkers, fetchTrendSeries } from "../api";
+import { fetchTrendInsights, fetchTrendMarkers, fetchTrendSeries } from "../api";
 import { formatDate } from "../formatDate";
 
 const FLAG_COLORS: Record<string, string> = {
@@ -96,13 +96,24 @@ function ChartTooltip({ active, payload }: ChartTooltipProps) {
   );
 }
 
-export function TrendsView() {
+interface TrendsViewProps {
+  model: string;
+}
+
+export function TrendsView({ model }: TrendsViewProps) {
   const [markers, setMarkers] = useState<TrendMarkerSummary[]>([]);
   const [selected, setSelected] = useState("");
   const [series, setSeries] = useState<TrendSeries | null>(null);
   const [loadingMarkers, setLoadingMarkers] = useState(true);
   const [loadingSeries, setLoadingSeries] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightStatus, setInsightStatus] = useState("");
+  const [thinkingText, setThinkingText] = useState("");
+  const [contentText, setContentText] = useState("");
+  const [insightError, setInsightError] = useState<string | null>(null);
+  const [showInsights, setShowInsights] = useState(false);
+  const insightOutputRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,12 +170,57 @@ export function TrendsView() {
     };
   }, [selected]);
 
+  useEffect(() => {
+    setShowInsights(false);
+    setInsightLoading(false);
+    setInsightStatus("");
+    setThinkingText("");
+    setContentText("");
+    setInsightError(null);
+  }, [selected]);
+
+  useEffect(() => {
+    const el = insightOutputRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [thinkingText, contentText]);
+
   const chartRows = useMemo(
     () => (series ? toChartRows(series) : []),
     [series],
   );
   const { refLow, refHigh } = useMemo(() => latestRefRange(chartRows), [chartRows]);
   const unit = chartRows[0]?.unit ?? markers.find((m) => m.name === selected)?.units[0] ?? null;
+
+  const handleGetInsights = async () => {
+    if (!selected || chartRows.length === 0) return;
+
+    setShowInsights(true);
+    setInsightLoading(true);
+    setInsightStatus("Analyzing trend with local LLM…");
+    setThinkingText("");
+    setContentText("");
+    setInsightError(null);
+
+    try {
+      await fetchTrendInsights(selected, model || undefined, (event) => {
+        if (event.type === "status") {
+          setInsightStatus(event.message);
+        } else if (event.type === "token") {
+          if (event.phase === "thinking") {
+            setThinkingText((prev) => prev + event.content);
+          } else {
+            setContentText((prev) => prev + event.content);
+          }
+        }
+      });
+    } catch (e) {
+      setInsightError(e instanceof Error ? e.message : "Failed to generate insights");
+    } finally {
+      setInsightLoading(false);
+    }
+  };
 
   if (loadingMarkers) {
     return (
@@ -215,52 +271,86 @@ export function TrendsView() {
           No data points for this marker.
         </p>
       ) : (
-        <div className="chart-container">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartRows} margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-              <CartesianGrid stroke="var(--border-strong)" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="date"
-                tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-                axisLine={{ stroke: "var(--border)" }}
-                tickLine={{ stroke: "var(--border)" }}
-              />
-              <YAxis
-                tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-                axisLine={{ stroke: "var(--border)" }}
-                tickLine={{ stroke: "var(--border)" }}
-                label={
-                  unit
-                    ? {
-                        value: unit,
-                        angle: -90,
-                        position: "insideLeft",
-                        fill: "var(--text-muted)",
-                        fontSize: 12,
-                      }
-                    : undefined
-                }
-              />
-              {refLow != null && refHigh != null && (
-                <ReferenceArea
-                  y1={refLow}
-                  y2={refHigh}
-                  fill="rgba(90, 158, 111, 0.12)"
-                  stroke="none"
+        <>
+          <div className="trends-toolbar">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleGetInsights}
+              disabled={insightLoading}
+            >
+              {insightLoading ? "Generating insights…" : "Get insights"}
+            </button>
+          </div>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartRows} margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                <CartesianGrid stroke="var(--border-strong)" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                  axisLine={{ stroke: "var(--border)" }}
+                  tickLine={{ stroke: "var(--border)" }}
                 />
+                <YAxis
+                  tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                  axisLine={{ stroke: "var(--border)" }}
+                  tickLine={{ stroke: "var(--border)" }}
+                  label={
+                    unit
+                      ? {
+                          value: unit,
+                          angle: -90,
+                          position: "insideLeft",
+                          fill: "var(--text-muted)",
+                          fontSize: 12,
+                        }
+                      : undefined
+                  }
+                />
+                {refLow != null && refHigh != null && (
+                  <ReferenceArea
+                    y1={refLow}
+                    y2={refHigh}
+                    fill="rgba(90, 158, 111, 0.12)"
+                    stroke="none"
+                  />
+                )}
+                <Tooltip content={<ChartTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--accent)"
+                  strokeWidth={2}
+                  dot={<FlagDot />}
+                  activeDot={{ r: 6 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          {showInsights && (
+            <div className="trend-insights">
+              <div className="trend-insights-header">
+                <h3>Trend insights</h3>
+                {insightLoading && <div className="spinner trend-insights-spinner" />}
+              </div>
+              {insightError && <div className="error-banner">{insightError}</div>}
+              {!insightError && (
+                <pre ref={insightOutputRef} className="extraction-stream trend-insights-stream">
+                  {thinkingText ? (
+                    <span className="extraction-thinking">{thinkingText}</span>
+                  ) : null}
+                  {contentText ? (
+                    <span className="extraction-content">{contentText}</span>
+                  ) : null}
+                  {insightLoading && !thinkingText && !contentText ? (
+                    <span className="extraction-waiting">{insightStatus}</span>
+                  ) : null}
+                </pre>
               )}
-              <Tooltip content={<ChartTooltip />} />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="var(--accent)"
-                strokeWidth={2}
-                dot={<FlagDot />}
-                activeDot={{ r: 6 }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

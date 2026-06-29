@@ -2,6 +2,7 @@ import type {
   ModelInfo,
   PanelListItem,
   PanelResponse,
+  TrendInsightStreamEvent,
   TrendMarkerSummary,
   TrendSeries,
   UploadStreamEvent,
@@ -21,10 +22,18 @@ function parseStreamLine(line: string): UploadStreamEvent | null {
   return JSON.parse(trimmed) as UploadStreamEvent;
 }
 
-async function readUploadStream(
+function parseTrendInsightLine(line: string): TrendInsightStreamEvent | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  return JSON.parse(trimmed) as TrendInsightStreamEvent;
+}
+
+async function readNdjsonStream<T>(
   response: Response,
-  onEvent?: (event: UploadStreamEvent) => void,
-): Promise<PanelResponse> {
+  parseLine: (line: string) => T | null,
+  onEvent: ((event: T) => void) | undefined,
+  onComplete: (event: T) => boolean,
+): Promise<void> {
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error ?? `Request failed (${response.status})`);
@@ -37,7 +46,7 @@ async function readUploadStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  let panel: PanelResponse | null = null;
+  let completed = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -48,25 +57,51 @@ async function readUploadStream(
     buffer = lines.pop() ?? "";
 
     for (const line of lines) {
-      const event = parseStreamLine(line);
+      const event = parseLine(line);
       if (!event) continue;
 
       onEvent?.(event);
 
-      if (event.type === "done") {
-        panel = event.panel;
-      } else if (event.type === "error") {
-        throw new Error(event.error);
+      if (onComplete(event)) {
+        completed = true;
       }
     }
   }
 
-  const trailing = parseStreamLine(buffer);
+  const trailing = parseLine(buffer);
   if (trailing) {
     onEvent?.(trailing);
-    if (trailing.type === "done") panel = trailing.panel;
-    if (trailing.type === "error") throw new Error(trailing.error);
+    if (onComplete(trailing)) {
+      completed = true;
+    }
   }
+
+  if (!completed) {
+    throw new Error("Stream ended without a result");
+  }
+}
+
+async function readUploadStream(
+  response: Response,
+  onEvent?: (event: UploadStreamEvent) => void,
+): Promise<PanelResponse> {
+  let panel: PanelResponse | null = null;
+
+  await readNdjsonStream(
+    response,
+    parseStreamLine,
+    onEvent,
+    (event) => {
+      if (event.type === "done") {
+        panel = event.panel;
+        return true;
+      }
+      if (event.type === "error") {
+        throw new Error(event.error);
+      }
+      return false;
+    },
+  );
 
   if (!panel) {
     throw new Error("Upload completed without a result");
@@ -94,6 +129,30 @@ export async function fetchTrendMarkers(): Promise<TrendMarkerSummary[]> {
 export async function fetchTrendSeries(marker: string): Promise<TrendSeries> {
   return handleResponse(
     await fetch(`/api/trends?marker=${encodeURIComponent(marker)}`),
+  );
+}
+
+export async function fetchTrendInsights(
+  marker: string,
+  model?: string,
+  onEvent?: (event: TrendInsightStreamEvent) => void,
+): Promise<void> {
+  const response = await fetch("/api/trends/insights", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ marker, model }),
+  });
+
+  await readNdjsonStream(
+    response,
+    parseTrendInsightLine,
+    onEvent,
+    (event) => {
+      if (event.type === "error") {
+        throw new Error(event.error);
+      }
+      return event.type === "done";
+    },
   );
 }
 

@@ -111,6 +111,12 @@ export type UploadStreamEvent =
   | { type: "done"; panel: PanelResponse }
   | { type: "error"; error: string };
 
+export type TrendInsightStreamEvent =
+  | { type: "status"; message: string }
+  | { type: "token"; content: string; phase: "thinking" | "content" }
+  | { type: "done" }
+  | { type: "error"; error: string };
+
 export function normalizeFlag(
   flag: string | undefined,
   value: number | null | undefined,
