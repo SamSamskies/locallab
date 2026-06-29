@@ -1,4 +1,4 @@
-import { chatJson } from "./ollama";
+import { chatJsonStreaming, type StreamTokenPhase } from "./ollama";
 import { parseLlmExtraction, type LlmExtraction } from "../shared/schema";
 
 const MAX_TEXT_CHARS = 24_000;
@@ -50,8 +50,9 @@ export async function extractFromPdfText(
   pdfText: string,
   filename: string,
   model?: string,
+  onToken?: (token: string, phase: StreamTokenPhase) => void,
 ): Promise<LlmExtraction> {
   const prompt = buildExtractionPrompt(pdfText, filename);
-  const raw = await chatJson<unknown>(prompt, model);
+  const raw = await chatJsonStreaming<unknown>(prompt, onToken ?? (() => {}), model);
   return parseLlmExtraction(raw);
 }

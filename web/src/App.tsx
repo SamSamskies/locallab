@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PanelListItem, PanelResponse } from "@shared/schema";
 import { fetchModels, fetchPanel, fetchPanels, uploadPanel } from "./api";
+import { ExtractionProgress } from "./components/ExtractionProgress";
 import { ModelSelector } from "./components/ModelSelector";
 import { PanelView } from "./components/PanelView";
 import { UploadDropzone } from "./components/UploadDropzone";
@@ -12,6 +13,9 @@ export default function App() {
   const [models, setModels] = useState<{ name: string; default: boolean }[]>([]);
   const [model, setModel] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("Extracting markers with local LLM…");
+  const [thinkingText, setThinkingText] = useState("");
+  const [contentText, setContentText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const loadPanels = useCallback(async () => {
@@ -45,9 +49,22 @@ export default function App() {
 
   const handleUpload = async (file: File) => {
     setLoading(true);
+    setUploadStatus("Reading PDF…");
+    setThinkingText("");
+    setContentText("");
     setError(null);
     try {
-      const panel = await uploadPanel(file, model || undefined);
+      const panel = await uploadPanel(file, model || undefined, (event) => {
+        if (event.type === "status") {
+          setUploadStatus(event.message);
+        } else if (event.type === "token") {
+          if (event.phase === "thinking") {
+            setThinkingText((prev) => prev + event.content);
+          } else {
+            setContentText((prev) => prev + event.content);
+          }
+        }
+      });
       setSelectedPanel(panel);
       setSelectedId(panel.id);
       await loadPanels();
@@ -55,6 +72,8 @@ export default function App() {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setLoading(false);
+      setThinkingText("");
+      setContentText("");
     }
   };
 
@@ -115,13 +134,11 @@ export default function App() {
           {error && <div className="error-banner">{error}</div>}
 
           {loading ? (
-            <div className="card loading">
-              <div className="spinner" />
-              <p>Extracting markers with local LLM…</p>
-              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                Large models may take a minute or two
-              </p>
-            </div>
+            <ExtractionProgress
+              status={uploadStatus}
+              thinkingText={thinkingText}
+              contentText={contentText}
+            />
           ) : selectedPanel ? (
             <PanelView panel={selectedPanel} />
           ) : (

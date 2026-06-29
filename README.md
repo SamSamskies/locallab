@@ -45,6 +45,7 @@ Runs TypeScript type-checking (`tsc --noEmit`) and unit tests.
 |----------|---------|-------------|
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama API base URL |
 | `OLLAMA_MODEL` | `qwen3.6:27b` | Default model for extraction |
+| `OLLAMA_TIMEOUT_MS` | `0` | Idle timeout while streaming Ollama tokens; `0` disables the limit |
 | `PORT` | `3001` | Express API port |
 
 You can also switch models in the web UI.

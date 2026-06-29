@@ -179,6 +179,7 @@ h3 {
 
 .dropzone {
   position: relative;
+  overflow: hidden;
   border: 1.5px dashed var(--border-strong);
   border-radius: var(--radius);
   padding: 2.5rem 1.5rem;
@@ -194,11 +195,17 @@ h3 {
   background: var(--accent-soft);
 }
 
-.dropzone input {
+.dropzone input,
+.dropzone-input {
   position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .dropzone-icon {
@@ -457,6 +464,40 @@ h3 {
   gap: 1rem;
   padding: 3rem;
   color: var(--text-secondary);
+}
+
+.extraction-stream {
+  width: 100%;
+  max-width: 42rem;
+  min-height: 8rem;
+  max-height: 16rem;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+}
+
+.extraction-thinking {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.extraction-content {
+  color: var(--text-secondary);
+}
+
+.extraction-waiting {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .spinner {

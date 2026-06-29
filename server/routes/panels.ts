@@ -1,10 +1,10 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { markers, panels } from "../db/schema";
 import { extractFromPdfText } from "../services/extract";
 import { extractPdfText } from "../services/pdf";
-import type { PanelListItem, PanelResponse } from "../shared/schema";
+import type { PanelListItem, PanelResponse, UploadStreamEvent } from "../shared/schema";
 
 export const panelsRouter = Router();
 
@@ -83,6 +83,12 @@ panelsRouter.get("/:id", (req, res) => {
   res.json(panel);
 });
 
+function writeStreamEvent(res: Response, event: UploadStreamEvent): void {
+  res.write(`${JSON.stringify(event)}\n`);
+  const flush = (res as Response & { flush?: () => void }).flush;
+  flush?.();
+}
+
 panelsRouter.post("/", async (req, res) => {
   const file = req.file;
   if (!file) {
@@ -97,10 +103,24 @@ panelsRouter.post("/", async (req, res) => {
 
   const model = typeof req.body?.model === "string" ? req.body.model : undefined;
 
-  try {
-    const { text } = await extractPdfText(file.buffer);
-    const extraction = await extractFromPdfText(text, file.originalname, model);
+  res.setHeader("Content-Type", "application/x-ndjson");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
 
+  const send = (event: UploadStreamEvent) => writeStreamEvent(res, event);
+
+  try {
+    send({ type: "status", message: "Reading PDF…" });
+    const { text } = await extractPdfText(file.buffer);
+
+    send({ type: "status", message: "Analyzing with local LLM…" });
+    const extraction = await extractFromPdfText(text, file.originalname, model, (content, phase) => {
+      send({ type: "token", content, phase });
+    });
+
+    send({ type: "status", message: "Saving results…" });
     const insertPanel = db
       .insert(panels)
       .values({
@@ -131,9 +151,15 @@ panelsRouter.post("/", async (req, res) => {
     }
 
     const panel = toPanelResponse(panelId);
-    res.status(201).json(panel);
+    if (!panel) {
+      throw new Error("Failed to load saved panel");
+    }
+
+    send({ type: "done", panel });
+    res.end();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to analyze panel";
-    res.status(500).json({ error: message });
+    send({ type: "error", error: message });
+    res.end();
   }
 });

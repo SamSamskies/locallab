@@ -68,6 +68,12 @@ export const modelInfoSchema = z.object({
 
 export type ModelInfo = z.infer<typeof modelInfoSchema>;
 
+export type UploadStreamEvent =
+  | { type: "status"; message: string }
+  | { type: "token"; content: string; phase: "thinking" | "content" }
+  | { type: "done"; panel: PanelResponse }
+  | { type: "error"; error: string };
+
 export function normalizeFlag(
   flag: string | undefined,
   value: number | null | undefined,
