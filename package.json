@@ -10,7 +10,8 @@
     "build": "vite build",
     "test": "vitest run",
     "verify": "tsc --noEmit && vitest run",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:backup": "bash scripts/db-backup.sh"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
