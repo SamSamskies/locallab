@@ -1,5 +1,9 @@
 import type {
   CachedTrendInsight,
+  ChatContextType,
+  ChatConversation,
+  ChatMessage,
+  ChatStreamEvent,
   ModelInfo,
   PanelListItem,
   PanelResponse,
@@ -27,6 +31,12 @@ function parseTrendInsightLine(line: string): TrendInsightStreamEvent | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
   return JSON.parse(trimmed) as TrendInsightStreamEvent;
+}
+
+function parseChatStreamLine(line: string): ChatStreamEvent | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  return JSON.parse(trimmed) as ChatStreamEvent;
 }
 
 async function readNdjsonStream<T>(
@@ -195,6 +205,70 @@ export async function fetchTrendInsights(
     },
     signal,
   );
+}
+
+export async function fetchConversations(
+  contextType: ChatContextType,
+  contextKey: string,
+): Promise<ChatConversation[]> {
+  const params = new URLSearchParams({ contextType, contextKey });
+  return handleResponse(await fetch(`/api/chat/conversations?${params}`));
+}
+
+export async function deleteConversation(id: number): Promise<void> {
+  const response = await fetch(`/api/chat/conversations/${id}`, { method: "DELETE" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error ?? `Request failed (${response.status})`);
+  }
+}
+
+export async function fetchConversationMessages(id: number): Promise<ChatMessage[]> {
+  return handleResponse(await fetch(`/api/chat/conversations/${id}/messages`));
+}
+
+export async function sendChatMessage(
+  params: {
+    conversationId?: number;
+    contextType: ChatContextType;
+    contextKey: string;
+    model: string;
+    message: string;
+  },
+  onEvent?: (event: ChatStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<{ conversation: ChatConversation; messages: ChatMessage[] }> {
+  let result: { conversation: ChatConversation; messages: ChatMessage[] } | null = null;
+
+  const response = await fetch("/api/chat/conversations/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+    signal,
+  });
+
+  await readNdjsonStream(
+    response,
+    parseChatStreamLine,
+    onEvent,
+    (event) => {
+      if (event.type === "error") {
+        throw new Error(event.error);
+      }
+      if (event.type === "done") {
+        result = { conversation: event.conversation, messages: event.messages };
+        return true;
+      }
+      return false;
+    },
+    signal,
+  );
+
+  if (!result) {
+    throw new Error("Chat completed without a result");
+  }
+
+  return result;
 }
 
 export async function uploadPanel(

@@ -2,15 +2,17 @@ import { useState } from "react";
 import type { PanelResponse } from "@shared/schema";
 import { exportPanelJson } from "../exportPanelJson";
 import { formatDate } from "../formatDate";
+import { ChatPanel } from "./ChatPanel";
 import { MarkerTable } from "./MarkerTable";
 
 interface PanelViewProps {
   panel: PanelResponse;
+  model: string;
   onMarkerClick?: (name: string) => void;
   onDelete?: (id: number) => Promise<void> | void;
 }
 
-export function PanelView({ panel, onMarkerClick, onDelete }: PanelViewProps) {
+export function PanelView({ panel, model, onMarkerClick, onDelete }: PanelViewProps) {
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -74,6 +76,8 @@ export function PanelView({ panel, onMarkerClick, onDelete }: PanelViewProps) {
       )}
 
       <MarkerTable markers={panel.markers} onMarkerClick={onMarkerClick} />
+
+      <ChatPanel contextType="panel" contextKey={String(panel.id)} model={model} />
     </div>
   );
 }

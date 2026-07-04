@@ -31,6 +31,11 @@ type OllamaStreamChunk = {
 
 export type StreamTokenPhase = "thinking" | "content";
 
+export type OllamaChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
 async function readOllamaStream(
   response: Response,
   onToken: (token: string, phase: StreamTokenPhase) => void,
@@ -113,7 +118,7 @@ async function readOllamaStream(
 }
 
 async function chatRequest(
-  prompt: string,
+  messages: OllamaChatMessage[],
   model: string,
   format: "json" | undefined,
 ): Promise<Response> {
@@ -124,7 +129,7 @@ async function chatRequest(
       model,
       stream: true,
       ...(format ? { format } : {}),
-      messages: [{ role: "user", content: prompt }],
+      messages,
     }),
   });
 
@@ -136,13 +141,21 @@ async function chatRequest(
   return response;
 }
 
+export async function chatMessagesStreaming(
+  messages: OllamaChatMessage[],
+  onToken: (token: string, phase: StreamTokenPhase) => void,
+  model: string,
+): Promise<string> {
+  const response = await chatRequest(messages, model, undefined);
+  return readOllamaStream(response, onToken, getOllamaTimeoutMs());
+}
+
 export async function chatStreaming(
   prompt: string,
   onToken: (token: string, phase: StreamTokenPhase) => void,
   model: string,
 ): Promise<string> {
-  const response = await chatRequest(prompt, model, undefined);
-  return readOllamaStream(response, onToken, getOllamaTimeoutMs());
+  return chatMessagesStreaming([{ role: "user", content: prompt }], onToken, model);
 }
 
 export async function chatJsonStreaming<T>(
@@ -150,7 +163,7 @@ export async function chatJsonStreaming<T>(
   onToken: (token: string, phase: StreamTokenPhase) => void,
   model: string,
 ): Promise<T> {
-  const response = await chatRequest(prompt, model, "json");
+  const response = await chatRequest([{ role: "user", content: prompt }], model, "json");
   const content = await readOllamaStream(response, onToken, getOllamaTimeoutMs());
   return JSON.parse(content) as T;
 }

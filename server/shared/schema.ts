@@ -123,6 +123,36 @@ export const cachedTrendInsightSchema = z.object({
 
 export type CachedTrendInsight = z.infer<typeof cachedTrendInsightSchema>;
 
+export const chatContextTypeSchema = z.enum(["panel", "trend"]);
+export type ChatContextType = z.infer<typeof chatContextTypeSchema>;
+
+export const chatConversationSchema = z.object({
+  id: z.number(),
+  contextType: chatContextTypeSchema,
+  contextKey: z.string(),
+  title: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type ChatConversation = z.infer<typeof chatConversationSchema>;
+
+export const chatMessageSchema = z.object({
+  id: z.number(),
+  conversationId: z.number(),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+  createdAt: z.string(),
+});
+
+export type ChatMessage = z.infer<typeof chatMessageSchema>;
+
+export type ChatStreamEvent =
+  | { type: "status"; message: string }
+  | { type: "token"; content: string; phase: "thinking" | "content" }
+  | { type: "done"; conversation: ChatConversation; messages: ChatMessage[] }
+  | { type: "error"; error: string };
+
 export function normalizeFlag(
   flag: string | undefined,
   value: number | null | undefined,

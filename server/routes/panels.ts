@@ -2,6 +2,7 @@ import { Router, type Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { markers, panels } from "../db/schema";
+import { deleteConversationsForPanel } from "../services/chatStore";
 import { extractFromPdfText } from "../services/extract";
 import { extractPdfText } from "../services/pdf";
 import type { PanelListItem, PanelResponse, UploadStreamEvent } from "../shared/schema";
@@ -95,6 +96,8 @@ panelsRouter.delete("/:id", (req, res) => {
     res.status(404).json({ error: "Panel not found" });
     return;
   }
+
+  deleteConversationsForPanel(db, id);
 
   res.status(204).end();
 });

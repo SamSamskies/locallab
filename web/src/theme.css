@@ -894,6 +894,140 @@ h3 {
   font-weight: 500;
 }
 
+.chat-panel {
+  margin-top: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.chat-panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.9rem 1.1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-panel-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.chat-panel-toggle-icon {
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.chat-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0 1.1rem 1.1rem;
+  border-top: 1px solid var(--border);
+}
+
+.chat-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.85rem;
+}
+
+.chat-conversation-select {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 180px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.chat-loading {
+  min-height: 120px;
+}
+
+.chat-message {
+  max-width: 92%;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.925rem;
+}
+
+.chat-message p {
+  margin: 0;
+}
+
+.chat-message-user {
+  align-self: flex-end;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.chat-message-assistant {
+  align-self: flex-start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.chat-message-streaming {
+  opacity: 0.95;
+}
+
+.chat-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-end;
+}
+
+.chat-input {
+  flex: 1;
+  min-height: 72px;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.925rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.chat-input:focus {
+  outline: none;
+  background: var(--bg-hover);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
+}
+
+.chat-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;

@@ -213,6 +213,7 @@ export default function App() {
           ) : selectedPanel ? (
             <PanelView
               panel={selectedPanel}
+              model={model}
               onMarkerClick={openTrendForMarker}
               onDelete={handleDeletePanel}
             />

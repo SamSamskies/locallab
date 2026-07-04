@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import multer from "multer";
 import { modelsRouter } from "./routes/models";
+import { chatRouter } from "./routes/chat";
 import { panelsRouter } from "./routes/panels";
 import { trendsRouter } from "./routes/trends";
 
@@ -27,6 +28,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/models", modelsRouter);
+app.use("/api/chat", chatRouter);
 app.use("/api/panels", upload.single("file"), panelsRouter);
 app.use("/api/trends", trendsRouter);
 

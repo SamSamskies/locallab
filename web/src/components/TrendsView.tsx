@@ -13,6 +13,7 @@ import {
 import type { DotProps } from "recharts";
 import { fetchCachedTrendInsight, fetchTrendInsights, fetchTrendMarkers, fetchTrendSeries } from "../api";
 import { formatDate } from "../formatDate";
+import { ChatPanel } from "./ChatPanel";
 import { MarkdownContent } from "./MarkdownContent";
 
 const FLAG_COLORS: Record<string, string> = {
@@ -428,6 +429,10 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
                 </div>
               )}
             </div>
+          )}
+
+          {selected && (
+            <ChatPanel contextType="trend" contextKey={selected} model={model} />
           )}
         </>
       )}

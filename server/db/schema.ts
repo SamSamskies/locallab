@@ -36,9 +36,38 @@ export const trendInsights = sqliteTable("trend_insights", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+export const chatConversations = sqliteTable("chat_conversations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  contextType: text("context_type").notNull(),
+  contextKey: text("context_key").notNull(),
+  title: text("title"),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
+export const chatMessages = sqliteTable("chat_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  conversationId: integer("conversation_id")
+    .notNull()
+    .references(() => chatConversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export type Panel = typeof panels.$inferSelect;
 export type Marker = typeof markers.$inferSelect;
 export type TrendInsight = typeof trendInsights.$inferSelect;
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewPanel = typeof panels.$inferInsert;
 export type NewMarker = typeof markers.$inferInsert;
 export type NewTrendInsight = typeof trendInsights.$inferInsert;
+export type NewChatConversation = typeof chatConversations.$inferInsert;
+export type NewChatMessage = typeof chatMessages.$inferInsert;
