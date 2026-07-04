@@ -1,12 +1,7 @@
 const DEFAULT_OLLAMA_URL = "http://localhost:11434";
-const DEFAULT_MODEL = "qwen3.6:27b";
 
 export function getOllamaUrl(): string {
   return process.env.OLLAMA_URL ?? DEFAULT_OLLAMA_URL;
-}
-
-export function getDefaultModel(): string {
-  return process.env.OLLAMA_MODEL ?? DEFAULT_MODEL;
 }
 
 /** Idle timeout in ms; 0 disables. Resets on each streamed token. */
@@ -119,14 +114,14 @@ async function readOllamaStream(
 
 async function chatRequest(
   prompt: string,
-  model: string | undefined,
+  model: string,
   format: "json" | undefined,
 ): Promise<Response> {
   const response = await fetch(`${getOllamaUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: model ?? getDefaultModel(),
+      model,
       stream: true,
       ...(format ? { format } : {}),
       messages: [{ role: "user", content: prompt }],
@@ -144,7 +139,7 @@ async function chatRequest(
 export async function chatStreaming(
   prompt: string,
   onToken: (token: string, phase: StreamTokenPhase) => void,
-  model?: string,
+  model: string,
 ): Promise<string> {
   const response = await chatRequest(prompt, model, undefined);
   return readOllamaStream(response, onToken, getOllamaTimeoutMs());
@@ -153,13 +148,13 @@ export async function chatStreaming(
 export async function chatJsonStreaming<T>(
   prompt: string,
   onToken: (token: string, phase: StreamTokenPhase) => void,
-  model?: string,
+  model: string,
 ): Promise<T> {
   const response = await chatRequest(prompt, model, "json");
   const content = await readOllamaStream(response, onToken, getOllamaTimeoutMs());
   return JSON.parse(content) as T;
 }
 
-export async function chatJson<T>(prompt: string, model?: string): Promise<T> {
+export async function chatJson<T>(prompt: string, model: string): Promise<T> {
   return chatJsonStreaming<T>(prompt, () => {}, model);
 }

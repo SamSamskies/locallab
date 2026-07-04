@@ -101,7 +101,11 @@ panelsRouter.post("/", async (req, res) => {
     return;
   }
 
-  const model = typeof req.body?.model === "string" ? req.body.model : undefined;
+  const model = typeof req.body?.model === "string" ? req.body.model.trim() : "";
+  if (!model) {
+    res.status(400).json({ error: "model is required" });
+    return;
+  }
 
   res.setHeader("Content-Type", "application/x-ndjson");
   res.setHeader("Cache-Control", "no-cache");

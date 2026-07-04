@@ -11,7 +11,7 @@ alwaysApply: true
 - **Frontend** (`web/`): React 19, Vite, plain CSS (`web/src/theme.css`)
 - **Backend** (`server/`): Express 5, TypeScript (ESM), `tsx` for dev
 - **Database**: SQLite via `better-sqlite3` + Drizzle ORM (`server/db/`)
-- **LLM**: Ollama (`OLLAMA_URL`, `OLLAMA_MODEL` in `.env`)
+- **LLM**: Ollama (`OLLAMA_URL` in `.env`; model chosen in the web UI)
 - **Validation**: Zod
 - **PDF parsing**: `unpdf`
 - **Shared types**: `server/shared/` (import as `@shared/*`)

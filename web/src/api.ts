@@ -164,7 +164,7 @@ export async function fetchCachedTrendInsight(
 
 export async function fetchTrendInsights(
   marker: string,
-  model?: string,
+  model: string,
   onEvent?: (event: TrendInsightStreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -191,12 +191,12 @@ export async function fetchTrendInsights(
 
 export async function uploadPanel(
   file: File,
-  model?: string,
+  model: string,
   onEvent?: (event: UploadStreamEvent) => void,
 ): Promise<PanelResponse> {
   const formData = new FormData();
   formData.append("file", file);
-  if (model) formData.append("model", model);
+  formData.append("model", model);
 
   const response = await fetch("/api/panels", {
     method: "POST",

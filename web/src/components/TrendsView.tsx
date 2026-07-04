@@ -233,7 +233,7 @@ export function TrendsView({ model }: TrendsViewProps) {
   const unit = chartRows[0]?.unit ?? markers.find((m) => m.name === selected)?.units[0] ?? null;
 
   const handleGetInsights = async () => {
-    if (!selected || chartRows.length === 0) return;
+    if (!selected || chartRows.length === 0 || !model) return;
 
     const marker = selected;
     insightStreamRef.current?.abort();
@@ -250,7 +250,7 @@ export function TrendsView({ model }: TrendsViewProps) {
     try {
       await fetchTrendInsights(
         marker,
-        model || undefined,
+        model,
         (event) => {
           if (controller.signal.aborted) return;
 
@@ -336,7 +336,7 @@ export function TrendsView({ model }: TrendsViewProps) {
               type="button"
               className="btn btn-primary"
               onClick={handleGetInsights}
-              disabled={insightLoading || loadingCachedInsight}
+              disabled={insightLoading || loadingCachedInsight || !model}
             >
               {insightLoading
                 ? "Generating insights…"

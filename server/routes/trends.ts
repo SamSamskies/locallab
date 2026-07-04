@@ -56,7 +56,11 @@ trendsRouter.get("/insights", (req, res) => {
 
 trendsRouter.post("/insights", async (req, res) => {
   const marker = typeof req.body?.marker === "string" ? req.body.marker.trim() : "";
-  const model = typeof req.body?.model === "string" ? req.body.model : undefined;
+  const model = typeof req.body?.model === "string" ? req.body.model.trim() : "";
+  if (!model) {
+    res.status(400).json({ error: "model is required" });
+    return;
+  }
 
   if (!marker) {
     res.status(400).json({ error: "marker is required" });

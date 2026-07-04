@@ -39,7 +39,7 @@ Provide your analysis:`;
 export async function generateTrendInsight(
   series: TrendSeries,
   onToken: (token: string, phase: StreamTokenPhase) => void,
-  model?: string,
+  model: string,
 ): Promise<string> {
   const prompt = buildTrendInsightPrompt(series);
   return chatStreaming(prompt, onToken, model);

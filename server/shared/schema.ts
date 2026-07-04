@@ -63,7 +63,6 @@ export type PanelListItem = z.infer<typeof panelListItemSchema>;
 
 export const modelInfoSchema = z.object({
   name: z.string(),
-  default: z.boolean(),
 });
 
 export type ModelInfo = z.infer<typeof modelInfoSchema>;

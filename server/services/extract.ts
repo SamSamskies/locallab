@@ -49,7 +49,7 @@ ${trimmed}
 export async function extractFromPdfText(
   pdfText: string,
   filename: string,
-  model?: string,
+  model: string,
   onToken?: (token: string, phase: StreamTokenPhase) => void,
 ): Promise<LlmExtraction> {
   const prompt = buildExtractionPrompt(pdfText, filename);

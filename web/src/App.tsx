@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { PanelListItem, PanelResponse } from "@shared/schema";
 import { fetchModels, fetchPanel, fetchPanels, uploadPanel } from "./api";
 import { formatDate } from "./formatDate";
+import { getStoredModel, setStoredModel } from "./modelStorage";
 import { ExtractionProgress } from "./components/ExtractionProgress";
 import { ModelSelector } from "./components/ModelSelector";
 import { PanelView } from "./components/PanelView";
@@ -14,7 +15,9 @@ export default function App() {
   const [panels, setPanels] = useState<PanelListItem[]>([]);
   const [selectedPanel, setSelectedPanel] = useState<PanelResponse | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [models, setModels] = useState<{ name: string; default: boolean }[]>([]);
+  const [models, setModels] = useState<{ name: string }[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsError, setModelsError] = useState<string | null>(null);
   const [model, setModel] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("Extracting markers with local LLM…");
@@ -28,18 +31,31 @@ export default function App() {
     setPanels(list);
   }, []);
 
+  const handleModelChange = useCallback((next: string) => {
+    setModel(next);
+    if (next) {
+      setStoredModel(next);
+    }
+  }, []);
+
   useEffect(() => {
     fetchModels()
       .then((m) => {
         setModels(m);
-        const def = m.find((x) => x.default) ?? m[0];
-        if (def) setModel(def.name);
+        setModelsError(null);
+        const stored = getStoredModel();
+        if (stored && m.some((entry) => entry.name === stored)) {
+          setModel(stored);
+        }
       })
-      .catch(() => {
-        setModel("qwen3.6:27b");
-      });
+      .catch((e) => {
+        setModelsError(e instanceof Error ? e.message : "Failed to load models");
+      })
+      .finally(() => setModelsLoading(false));
     loadPanels().catch(() => {});
   }, [loadPanels]);
+
+  const canUseModel = !modelsLoading && !modelsError && models.length > 0 && Boolean(model);
 
   const selectPanel = async (id: number) => {
     setSelectedId(id);
@@ -53,6 +69,11 @@ export default function App() {
   };
 
   const handleUpload = async (file: File) => {
+    if (!model) {
+      setError("Select an Ollama model before uploading.");
+      return;
+    }
+
     setView("panel");
     setLoading(true);
     setUploadStatus("Reading PDF…");
@@ -60,7 +81,7 @@ export default function App() {
     setContentText("");
     setError(null);
     try {
-      const panel = await uploadPanel(file, model || undefined, (event) => {
+      const panel = await uploadPanel(file, model, (event) => {
         if (event.type === "status") {
           setUploadStatus(event.message);
         } else if (event.type === "token") {
@@ -99,13 +120,15 @@ export default function App() {
           <ModelSelector
             models={models}
             value={model}
-            onChange={setModel}
+            onChange={handleModelChange}
+            loading={modelsLoading}
+            error={modelsError}
             disabled={loading}
           />
 
           <div className="card">
             <div className="card-title">Upload</div>
-            <UploadDropzone onUpload={handleUpload} disabled={loading} />
+            <UploadDropzone onUpload={handleUpload} disabled={loading || !canUseModel} />
           </div>
 
           <div className="card">

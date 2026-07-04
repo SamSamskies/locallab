@@ -7,12 +7,7 @@ A privacy-first, fully-local web app for analyzing blood work results. Upload a 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) 20+
-- [Ollama](https://ollama.com) running locally
-- Pull the default model:
-
-```bash
-ollama pull qwen3.6:27b
-```
+- [Ollama](https://ollama.com) running locally with at least one model pulled (e.g. `ollama pull llama3.2`)
 
 ## Setup
 
@@ -44,8 +39,7 @@ Runs TypeScript type-checking (`tsc --noEmit`) and unit tests.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama API base URL |
-| `OLLAMA_MODEL` | `qwen3.6:27b` | Default model for extraction |
 | `OLLAMA_TIMEOUT_MS` | `0` | Idle timeout while streaming Ollama tokens; `0` disables the limit |
 | `PORT` | `3001` | Express API port |
 
-You can also switch models in the web UI.
+Choose a model from the web UI before uploading or generating insights.
