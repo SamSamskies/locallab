@@ -25,6 +25,7 @@ export default function App() {
   const [contentText, setContentText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<MainView>("panel");
+  const [trendMarker, setTrendMarker] = useState<string | null>(null);
 
   const loadPanels = useCallback(async () => {
     const list = await fetchPanels();
@@ -56,6 +57,11 @@ export default function App() {
   }, [loadPanels]);
 
   const canUseModel = !modelsLoading && !modelsError && models.length > 0 && Boolean(model);
+
+  const openTrendForMarker = useCallback((name: string) => {
+    setTrendMarker(name);
+    setView("trends");
+  }, []);
 
   const selectPanel = async (id: number) => {
     setSelectedId(id);
@@ -183,7 +189,7 @@ export default function App() {
           {error && <div className="error-banner">{error}</div>}
 
           {view === "trends" ? (
-            <TrendsView model={model} />
+            <TrendsView model={model} initialMarker={trendMarker} />
           ) : loading ? (
             <ExtractionProgress
               status={uploadStatus}
@@ -191,7 +197,7 @@ export default function App() {
               contentText={contentText}
             />
           ) : selectedPanel ? (
-            <PanelView panel={selectedPanel} />
+            <PanelView panel={selectedPanel} onMarkerClick={openTrendForMarker} />
           ) : (
             <div className="card empty-state">
               <h2>

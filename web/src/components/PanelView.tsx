@@ -4,9 +4,10 @@ import { MarkerTable } from "./MarkerTable";
 
 interface PanelViewProps {
   panel: PanelResponse;
+  onMarkerClick?: (name: string) => void;
 }
 
-export function PanelView({ panel }: PanelViewProps) {
+export function PanelView({ panel, onMarkerClick }: PanelViewProps) {
   return (
     <div className="card">
       <div className="panel-header">
@@ -30,7 +31,7 @@ export function PanelView({ panel }: PanelViewProps) {
         </ul>
       )}
 
-      <MarkerTable markers={panel.markers} />
+      <MarkerTable markers={panel.markers} onMarkerClick={onMarkerClick} />
     </div>
   );
 }

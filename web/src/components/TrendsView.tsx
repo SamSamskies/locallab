@@ -101,9 +101,15 @@ function ChartTooltip({ active, payload }: ChartTooltipProps) {
 
 interface TrendsViewProps {
   model: string;
+  initialMarker?: string | null;
 }
 
-export function TrendsView({ model }: TrendsViewProps) {
+function resolveMarkerName(markers: TrendMarkerSummary[], name: string): string | null {
+  const match = markers.find((m) => m.name.toLowerCase() === name.toLowerCase());
+  return match?.name ?? null;
+}
+
+export function TrendsView({ model, initialMarker }: TrendsViewProps) {
   const [markers, setMarkers] = useState<TrendMarkerSummary[]>([]);
   const [selected, setSelected] = useState("");
   const [series, setSeries] = useState<TrendSeries | null>(null);
@@ -136,7 +142,8 @@ export function TrendsView({ model }: TrendsViewProps) {
         if (cancelled) return;
         setMarkers(list);
         if (list.length > 0) {
-          setSelected(pickDefaultMarker(list));
+          const fromNav = initialMarker ? resolveMarkerName(list, initialMarker) : null;
+          setSelected(fromNav ?? pickDefaultMarker(list));
         }
       })
       .catch((e) => {
@@ -151,6 +158,12 @@ export function TrendsView({ model }: TrendsViewProps) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!initialMarker || markers.length === 0) return;
+    const resolved = resolveMarkerName(markers, initialMarker);
+    if (resolved) setSelected(resolved);
+  }, [initialMarker, markers]);
 
   useEffect(() => {
     if (!selected) {

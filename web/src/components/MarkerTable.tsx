@@ -2,6 +2,7 @@ import type { PanelResponse } from "@shared/schema";
 
 interface MarkerTableProps {
   markers: PanelResponse["markers"];
+  onMarkerClick?: (name: string) => void;
 }
 
 function formatValue(value: number | null, unit: string | null): string {
@@ -18,7 +19,7 @@ function formatRef(refLow: number | null, refHigh: number | null, refText: strin
   return "—";
 }
 
-export function MarkerTable({ markers }: MarkerTableProps) {
+export function MarkerTable({ markers, onMarkerClick }: MarkerTableProps) {
   if (markers.length === 0) {
     return <p className="empty-state">No markers extracted from this panel.</p>;
   }
@@ -37,7 +38,25 @@ export function MarkerTable({ markers }: MarkerTableProps) {
         </thead>
         <tbody>
           {markers.map((m, i) => (
-            <tr key={m.id} style={{ animationDelay: `${i * 0.04}s` }}>
+            <tr
+              key={m.id}
+              className={onMarkerClick ? "marker-row-clickable" : undefined}
+              style={{ animationDelay: `${i * 0.04}s` }}
+              onClick={onMarkerClick ? () => onMarkerClick(m.name) : undefined}
+              onKeyDown={
+                onMarkerClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onMarkerClick(m.name);
+                      }
+                    }
+                  : undefined
+              }
+              tabIndex={onMarkerClick ? 0 : undefined}
+              role={onMarkerClick ? "button" : undefined}
+              aria-label={onMarkerClick ? `View trend for ${m.name}` : undefined}
+            >
               <td className="marker-name">{m.name}</td>
               <td className="marker-value">{formatValue(m.value, m.unit)}</td>
               <td className="marker-ref">
