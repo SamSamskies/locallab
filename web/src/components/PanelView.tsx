@@ -1,4 +1,5 @@
 import type { PanelResponse } from "@shared/schema";
+import { exportPanelJson } from "../exportPanelJson";
 import { formatDate } from "../formatDate";
 import { MarkerTable } from "./MarkerTable";
 
@@ -17,6 +18,13 @@ export function PanelView({ panel, onMarkerClick }: PanelViewProps) {
             {formatDate(panel.collectedAt)} · {panel.markers.length} markers
           </div>
         </div>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => exportPanelJson(panel)}
+        >
+          Export JSON
+        </button>
       </div>
 
       {panel.summary && <div className="summary">{panel.summary}</div>}
