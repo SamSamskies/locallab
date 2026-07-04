@@ -11,7 +11,7 @@ type Database = BetterSQLite3Database<typeof schema>;
 
 export type ChatContext =
   | { type: "panel"; panel: PanelResponse }
-  | { type: "trend"; series: TrendSeries };
+  | { type: "trend"; series: TrendSeries; panels: PanelResponse[] };
 
 function formatRefRange(
   refLow: number | null,
@@ -31,6 +31,32 @@ function formatTrendRows(series: TrendSeries): string {
       return `- ${p.collectedAt} (${p.panelLabel}): ${valueText}, ref ${ref}, flag: ${p.flag}`;
     })
     .join("\n");
+}
+
+function formatMarkerRows(markers: PanelResponse["markers"]): string {
+  return markers
+    .map((m) => {
+      const valueText =
+        m.value != null ? (m.unit ? `${m.value} ${m.unit}` : String(m.value)) : "N/A";
+      const ref = formatRefRange(m.refLow, m.refHigh, m.refText);
+      return `- ${m.name}: ${valueText}, ref ${ref}, flag: ${m.flag}`;
+    })
+    .join("\n");
+}
+
+function formatPanelSection(panel: PanelResponse): string {
+  const insights =
+    panel.insights.length > 0
+      ? panel.insights.map((i) => `- ${i}`).join("\n")
+      : "None";
+
+  return `Panel: ${panel.label}
+Collected: ${panel.collectedAt ?? "unknown"}
+Summary: ${panel.summary ?? "None"}
+Insights:
+${insights}
+Markers:
+${formatMarkerRows(panel.markers)}`;
 }
 
 function toPanelResponse(panelId: number, database: Database = db): PanelResponse | null {
@@ -82,7 +108,14 @@ export function loadChatContext(
 
   const series = getTrendSeries(database, contextKey);
   if (series.points.length === 0) return null;
-  return { type: "trend", series };
+
+  const panelIds = [...new Set(series.points.map((p) => p.panelId))];
+  const trendPanels = panelIds
+    .map((panelId) => toPanelResponse(panelId, database))
+    .filter((panel): panel is PanelResponse => panel != null)
+    .sort((a, b) => (a.collectedAt ?? "").localeCompare(b.collectedAt ?? ""));
+
+  return { type: "trend", series, panels: trendPanels };
 }
 
 const CHAT_GUIDANCE = `Use the user's lab data below as the primary source for their specific values and whether markers are in or out of range. You may also draw on general medical and scientific knowledge to explain what markers mean, plausible mechanisms, and how their question relates to their results.
@@ -99,40 +132,28 @@ You do not have access to the live web; do not claim to have looked anything up 
 export function buildChatSystemPrompt(context: ChatContext): string {
   if (context.type === "panel") {
     const { panel } = context;
-    const markerRows = panel.markers
-      .map((m) => {
-        const valueText =
-          m.value != null ? (m.unit ? `${m.value} ${m.unit}` : String(m.value)) : "N/A";
-        const ref = formatRefRange(m.refLow, m.refHigh, m.refText);
-        return `- ${m.name}: ${valueText}, ref ${ref}, flag: ${m.flag}`;
-      })
-      .join("\n");
-
-    const insights =
-      panel.insights.length > 0
-        ? panel.insights.map((i) => `- ${i}`).join("\n")
-        : "None";
+    const panelSection = formatPanelSection(panel);
 
     return `You are a helpful clinical lab assistant. The user is asking questions about a specific lab panel report.
 
-Panel: ${panel.label}
-Collected: ${panel.collectedAt ?? "unknown"}
-Summary: ${panel.summary ?? "None"}
-
-Existing insights:
-${insights}
-
-Markers:
-${markerRows}
+${panelSection}
 
 ${CHAT_GUIDANCE}`;
   }
 
-  const { series } = context;
+  const { series, panels } = context;
+  const panelSections =
+    panels.length > 0
+      ? panels.map((panel) => formatPanelSection(panel)).join("\n\n")
+      : "None";
+
   return `You are a helpful clinical lab assistant. The user is asking questions about the trend for the "${series.marker}" marker across their historical lab results.
 
-Historical data (oldest to newest):
+Primary marker trend (oldest to newest):
 ${formatTrendRows(series)}
+
+Full panel data for each lab visit in this trend (oldest to newest):
+${panelSections}
 
 ${CHAT_GUIDANCE}`;
 }

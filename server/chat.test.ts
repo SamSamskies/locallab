@@ -163,11 +163,75 @@ describe("buildChatSystemPrompt", () => {
     expect(prompt).not.toContain("using only this panel data");
   });
 
-  test("includes trend history rows", () => {
-    const prompt = buildChatSystemPrompt({ type: "trend", series: glucoseSeries });
+  test("includes trend history rows and related panel markers", () => {
+    const panels: PanelResponse[] = [
+      {
+        id: 1,
+        label: "Panel A",
+        collectedAt: "2024-01-15",
+        sourceFilename: "a.pdf",
+        summary: "First panel",
+        insights: [],
+        createdAt: "2024-01-16T00:00:00.000Z",
+        markers: [
+          {
+            id: 1,
+            panelId: 1,
+            name: "Glucose",
+            value: 95,
+            unit: "mg/dL",
+            refLow: 70,
+            refHigh: 100,
+            refText: "70-100",
+            flag: "normal",
+            category: "Metabolic",
+          },
+          {
+            id: 2,
+            panelId: 1,
+            name: "Total Cholesterol",
+            value: 180,
+            unit: "mg/dL",
+            refLow: null,
+            refHigh: 200,
+            refText: "<200",
+            flag: "normal",
+            category: "Lipids",
+          },
+        ],
+      },
+      {
+        id: 2,
+        label: "Panel B",
+        collectedAt: "2024-06-01",
+        sourceFilename: "b.pdf",
+        summary: "Second panel",
+        insights: [],
+        createdAt: "2024-06-02T00:00:00.000Z",
+        markers: [
+          {
+            id: 3,
+            panelId: 2,
+            name: "Glucose",
+            value: 110,
+            unit: "mg/dL",
+            refLow: 70,
+            refHigh: 100,
+            refText: "70-100",
+            flag: "high",
+            category: "Metabolic",
+          },
+        ],
+      },
+    ];
+
+    const prompt = buildChatSystemPrompt({ type: "trend", series: glucoseSeries, panels });
+    expect(prompt).toContain("Primary marker trend");
+    expect(prompt).toContain("Full panel data for each lab visit");
     expect(prompt).toContain("Glucose");
     expect(prompt).toContain("Panel A");
     expect(prompt).toContain("Panel B");
+    expect(prompt).toContain("Total Cholesterol");
     expect(prompt).toContain("flag: high");
   });
 });
@@ -207,6 +271,82 @@ describe("loadChatContext", () => {
     if (context?.type === "panel") {
       expect(context.panel.label).toBe("CMP");
       expect(context.panel.markers).toHaveLength(1);
+    }
+  });
+
+  test("loads trend context with full panel data", () => {
+    const db = createTestDb();
+    const panelA = db
+      .insert(schema.panels)
+      .values({
+        label: "Panel A",
+        collectedAt: "2024-01-15",
+        sourceFilename: "a.pdf",
+        summary: "First",
+        insightsJson: JSON.stringify([]),
+        createdAt: "2024-01-16T00:00:00.000Z",
+      })
+      .run();
+    const panelB = db
+      .insert(schema.panels)
+      .values({
+        label: "Panel B",
+        collectedAt: "2024-06-01",
+        sourceFilename: "b.pdf",
+        summary: "Second",
+        insightsJson: JSON.stringify([]),
+        createdAt: "2024-06-02T00:00:00.000Z",
+      })
+      .run();
+
+    const panelAId = Number(panelA.lastInsertRowid);
+    const panelBId = Number(panelB.lastInsertRowid);
+
+    db.insert(schema.markers)
+      .values([
+        {
+          panelId: panelAId,
+          name: "LDL",
+          value: 95,
+          unit: "mg/dL",
+          refLow: null,
+          refHigh: 100,
+          refText: "<100",
+          flag: "normal",
+          category: "Lipids",
+        },
+        {
+          panelId: panelAId,
+          name: "Total Cholesterol",
+          value: 180,
+          unit: "mg/dL",
+          refLow: null,
+          refHigh: 200,
+          refText: "<200",
+          flag: "normal",
+          category: "Lipids",
+        },
+        {
+          panelId: panelBId,
+          name: "LDL",
+          value: 110,
+          unit: "mg/dL",
+          refLow: null,
+          refHigh: 100,
+          refText: "<100",
+          flag: "high",
+          category: "Lipids",
+        },
+      ])
+      .run();
+
+    const context = loadChatContext("trend", "LDL", db);
+    expect(context?.type).toBe("trend");
+    if (context?.type === "trend") {
+      expect(context.series.points).toHaveLength(2);
+      expect(context.panels).toHaveLength(2);
+      expect(context.panels[0]?.label).toBe("Panel A");
+      expect(context.panels[0]?.markers.some((m) => m.name === "Total Cholesterol")).toBe(true);
     }
   });
 });
