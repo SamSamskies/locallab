@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PanelListItem, PanelResponse } from "@shared/schema";
-import { fetchModels, fetchPanel, fetchPanels, uploadPanel } from "./api";
+import { deletePanel, fetchModels, fetchPanel, fetchPanels, uploadPanel } from "./api";
 import { formatDate } from "./formatDate";
 import { getStoredModel, setStoredModel } from "./modelStorage";
 import { ExtractionProgress } from "./components/ExtractionProgress";
@@ -71,6 +71,20 @@ export default function App() {
       setSelectedPanel(panel);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load panel");
+    }
+  };
+
+  const handleDeletePanel = async (id: number) => {
+    setError(null);
+    try {
+      await deletePanel(id);
+      if (selectedId === id) {
+        setSelectedPanel(null);
+        setSelectedId(null);
+      }
+      await loadPanels();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete panel");
     }
   };
 
@@ -197,7 +211,11 @@ export default function App() {
               contentText={contentText}
             />
           ) : selectedPanel ? (
-            <PanelView panel={selectedPanel} onMarkerClick={openTrendForMarker} />
+            <PanelView
+              panel={selectedPanel}
+              onMarkerClick={openTrendForMarker}
+              onDelete={handleDeletePanel}
+            />
           ) : (
             <div className="card empty-state">
               <h2>

@@ -142,6 +142,14 @@ export async function fetchPanel(id: number): Promise<PanelResponse> {
   return handleResponse(await fetch(`/api/panels/${id}`));
 }
 
+export async function deletePanel(id: number): Promise<void> {
+  const response = await fetch(`/api/panels/${id}`, { method: "DELETE" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error ?? `Request failed (${response.status})`);
+  }
+}
+
 export async function fetchTrendMarkers(): Promise<TrendMarkerSummary[]> {
   return handleResponse(await fetch("/api/trends/markers"));
 }

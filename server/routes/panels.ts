@@ -83,6 +83,22 @@ panelsRouter.get("/:id", (req, res) => {
   res.json(panel);
 });
 
+panelsRouter.delete("/:id", (req, res) => {
+  const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid panel id" });
+    return;
+  }
+
+  const result = db.delete(panels).where(eq(panels.id, id)).run();
+  if (result.changes === 0) {
+    res.status(404).json({ error: "Panel not found" });
+    return;
+  }
+
+  res.status(204).end();
+});
+
 function writeStreamEvent(res: Response, event: UploadStreamEvent): void {
   res.write(`${JSON.stringify(event)}\n`);
   const flush = (res as Response & { flush?: () => void }).flush;
