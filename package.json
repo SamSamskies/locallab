@@ -8,6 +8,7 @@
     "dev:server": "tsx watch server/index.ts",
     "dev:web": "vite",
     "build": "vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
     "test": "vitest run",
     "verify": "tsc --noEmit && vitest run",
     "db:push": "drizzle-kit push",

@@ -26,6 +26,15 @@ npm run dev
 - Web UI: http://localhost:5173
 - API: http://localhost:3001
 
+## Production
+
+```bash
+npm run build
+npm start
+```
+
+- App: http://localhost:3001 (API and web UI on one port)
+
 ## Verify
 
 ```bash
