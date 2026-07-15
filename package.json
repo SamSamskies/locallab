@@ -10,6 +10,7 @@
     "build": "vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "test": "vitest run",
+    "test:live-eval": "node scripts/live-eval.mjs",
     "verify": "tsc --noEmit && vitest run",
     "db:push": "drizzle-kit push",
     "db:backup": "bash scripts/db-backup.sh",
