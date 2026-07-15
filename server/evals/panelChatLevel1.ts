@@ -110,6 +110,86 @@ export function mustMatchAny(
   };
 }
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Patterns that treat an absent-marker mention as inventing a panel result. */
+function inventionPatternsForMatch(matchedText: string): RegExp[] {
+  const m = escapeRegExp(matchedText);
+  return [
+    // Claimed numeric value: "A1C is 6.2", "A1C: 5.7", "A1C of 6.1"
+    new RegExp(String.raw`\b${m}\s*(?::|of|at)\s*[\d.]+`, "i"),
+    new RegExp(String.raw`\b${m}\s+(?:is|was)\s*[\d.]+`, "i"),
+    // Possessive result language: "your A1C is…"
+    new RegExp(
+      String.raw`\byour\s+${m}\s+(?:is|was|of|at|:|shows|showed|came|comes)`,
+      "i",
+    ),
+    // Flagged as if measured: "elevated A1C", "A1C is high", "TPO positive"
+    new RegExp(
+      String.raw`\b(?:high|low|elevat\w*|abnormal|positive|negative)\s+${m}\b`,
+      "i",
+    ),
+    new RegExp(
+      String.raw`\b${m}\s+(?:(?:is|was|looks?)\s+)?(?:high|low|elevat\w*|abnormal|positive|negative|out of range|normal)\b`,
+      "i",
+    ),
+    // Imaging / result verbs: "ultrasound shows…"
+    new RegExp(
+      String.raw`\b${m}\s+(?:shows?|showed|reveals?|demonstrat\w*|found)\b`,
+      "i",
+    ),
+    // Claimed present on this report (marker first; same sentence only)
+    new RegExp(
+      String.raw`\b${m}\b[^\n.]{0,40}\b(?:on|in)\s+(?:this|the)\s+(?:panel|report)\b`,
+      "i",
+    ),
+  ];
+}
+
+/**
+ * Fail only when absent markers are framed as results on this panel
+ * (values, flags, "your X is…"). Naming them as possible follow-up tests is OK.
+ */
+export function mustNotInventAbsentMarkers(
+  markerPattern: RegExp,
+): (answer: string) => Level1CheckResult {
+  const flagSet = new Set(markerPattern.flags);
+  flagSet.add("g");
+  flagSet.add("i");
+  const globalMarker = new RegExp(
+    markerPattern.source,
+    [...flagSet].sort().join(""),
+  );
+
+  return (answer) => {
+    globalMarker.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = globalMarker.exec(answer)) !== null) {
+      const matchedText = match[0];
+      const windowStart = Math.max(0, match.index - 55);
+      const windowEnd = Math.min(
+        answer.length,
+        match.index + matchedText.length + 55,
+      );
+      const window = answer.slice(windowStart, windowEnd);
+
+      for (const invent of inventionPatternsForMatch(matchedText)) {
+        if (invent.test(window)) {
+          return {
+            pass: false,
+            evidence: `invented absent marker ${JSON.stringify(matchedText)} in ${JSON.stringify(
+              excerptAround(answer, match.index, matchedText.length),
+            )}`,
+          };
+        }
+      }
+    }
+    return { pass: true };
+  };
+}
+
 export function formatLevel1AssertionFailure(
   result: Level1AssertionResult,
 ): string {
@@ -197,8 +277,10 @@ export const PANEL_CHAT_LEVEL1_GLUCOSE_CASE = {
     {
       id: "no-invented-a1c",
       message:
-        "Inventing A1C (or other absent markers) breaks the ‘use the lab data’ contract for panel chat",
-      check: mustNotMatch(/\ba1c\b|\bhba1c\b|\bhemoglobin a1c\b/i),
+        "Claiming an A1C value/flag as if it were on this panel breaks the ‘use the lab data’ contract (mentioning A1C as a possible follow-up test is OK)",
+      check: mustNotInventAbsentMarkers(
+        /\ba1c\b|\bhba1c\b|\bhemoglobin a1c\b/i,
+      ),
     },
     {
       id: "uncertainty-cue",
@@ -283,8 +365,8 @@ export const PANEL_CHAT_LEVEL1_ALL_NORMAL_CBC_CASE = {
     {
       id: "no-invented-anemia-markers",
       message:
-        "Inventing Ferritin, B12, folate, or iron studies breaks the ‘use the lab data’ contract for this CBC",
-      check: mustNotMatch(
+        "Claiming Ferritin, B12, folate, or iron-study values/flags as if on this CBC breaks the ‘use the lab data’ contract (suggesting them as follow-up tests is OK)",
+      check: mustNotInventAbsentMarkers(
         /\bferritin\b|\bb12\b|\bvitamin b[- ]?12\b|\bfolate\b|\btibc\b|\biron (studies|panel|level|levels)\b|\bserum iron\b/i,
       ),
     },
@@ -365,8 +447,8 @@ export const PANEL_CHAT_LEVEL1_ELEVATED_TSH_CASE = {
     {
       id: "no-invented-thyroid-extras",
       message:
-        "Inventing TPO antibodies or ultrasound findings breaks the ‘use the lab data’ contract for this thyroid panel",
-      check: mustNotMatch(
+        "Claiming TPO antibody or ultrasound findings as if on this panel breaks the ‘use the lab data’ contract (suggesting them as follow-up tests is OK)",
+      check: mustNotInventAbsentMarkers(
         /\btpo\b|\banti[- ]?tpo\b|\bthyroid antibod\w*\b|\bultrasound\b/i,
       ),
     },

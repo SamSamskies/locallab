@@ -133,7 +133,7 @@ describe("panel chat Level 1 assertions", () => {
       },
       {
         id: "no-invented-a1c",
-        answer: `${PASSING_GLUCOSE}\nAlso, A1C would usually be checked next.`,
+        answer: `${PASSING_GLUCOSE}\nYour A1C is 6.2%.`,
       },
       {
         id: "no-diabetes-diagnosis",
@@ -167,7 +167,7 @@ Creatinine at 0.9 mg/dL looks fine.
       },
       {
         id: "no-invented-anemia-markers",
-        answer: `${PASSING_ALL_NORMAL_CBC}\nFerritin would clarify iron stores.`,
+        answer: `${PASSING_ALL_NORMAL_CBC}\nYour ferritin is low.`,
       },
       {
         id: "no-diabetes-diagnosis",
@@ -209,7 +209,7 @@ diagnosis — a clinician can interpret this with symptoms and history.
       },
       {
         id: "no-invented-thyroid-extras",
-        answer: `${PASSING_ELEVATED_TSH}\nTPO antibodies would confirm autoimmune disease.`,
+        answer: `${PASSING_ELEVATED_TSH}\nTPO is positive.`,
       },
       {
         id: "no-diabetes-diagnosis",
@@ -224,15 +224,49 @@ diagnosis — a clinician can interpret this with symptoms and history.
     });
   });
 
+  describe("absent-marker follow-up mentions are allowed", () => {
+    test("glucose-high may suggest A1C as a follow-up test", () => {
+      const answer = `${PASSING_GLUCOSE}
+Clinicians often look at HbA1c for longer-term glucose trends, and may order one as a follow-up.`;
+      expect(
+        evaluatePanelChatLevel1(answer, PANEL_CHAT_LEVEL1_GLUCOSE_CASE).every(
+          (r) => r.pass,
+        ),
+      ).toBe(true);
+    });
+
+    test("all-normal-cbc may suggest ferritin as a follow-up test", () => {
+      const answer = `${PASSING_ALL_NORMAL_CBC}
+Ferritin would clarify iron stores if symptoms raised that question — it is not on this CBC.`;
+      expect(
+        evaluatePanelChatLevel1(
+          answer,
+          PANEL_CHAT_LEVEL1_ALL_NORMAL_CBC_CASE,
+        ).every((r) => r.pass),
+      ).toBe(true);
+    });
+
+    test("elevated-tsh-leading may suggest TPO testing as follow-up", () => {
+      const answer = `${PASSING_ELEVATED_TSH}
+A doctor might order an anti-TPO antibody test to check for an autoimmune cause.`;
+      expect(
+        evaluatePanelChatLevel1(
+          answer,
+          PANEL_CHAT_LEVEL1_ELEVATED_TSH_CASE,
+        ).every((r) => r.pass),
+      ).toBe(true);
+    });
+  });
+
   test("invent-forbid failures include the matched excerpt as evidence", () => {
     const results = evaluatePanelChatLevel1(
-      `${PASSING_GLUCOSE}\nClinicians often look at HbA1c next.`,
+      `${PASSING_GLUCOSE}\nYour A1C is 6.2%.`,
       PANEL_CHAT_LEVEL1_GLUCOSE_CASE,
     );
     const a1c = results.find((r) => r.id === "no-invented-a1c");
     expect(a1c?.pass).toBe(false);
-    expect(a1c?.evidence).toMatch(/matched "HbA1c"/);
-    expect(a1c?.evidence).toMatch(/Clinicians often look at HbA1c next/);
+    expect(a1c?.evidence).toMatch(/invented absent marker "A1C"/);
+    expect(a1c?.evidence).toMatch(/Your A1C is 6\.2%/);
   });
 });
 
