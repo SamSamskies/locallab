@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, test } from "vitest";
 import {
   evaluatePanelChatLevel1,
+  formatLevel1AssertionFailure,
   PANEL_CHAT_LEVEL1_CASES,
 } from "./evals/panelChatLevel1";
 import { buildChatSystemPrompt, generateChatReply } from "./services/chat";
@@ -79,28 +80,27 @@ describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
         model,
       );
       const assertionResults = evaluatePanelChatLevel1(answer, level1Case);
-      const failingIds = assertionResults
-        .filter((r) => !r.pass)
-        .map((r) => r.id);
-      const pass = failingIds.length === 0;
+      const failures = assertionResults.filter((r) => !r.pass);
+      const failingIds = failures.map((r) => r.id);
+      const pass = failures.length === 0;
+      const failureDetail = failures
+        .map(formatLevel1AssertionFailure)
+        .join("\n\n");
 
       caseResults.push({ id: level1Case.id, pass, failingIds });
 
       if (!pass) {
         console.error(
-          `[live eval] case=${level1Case.id} failing=[${failingIds.join(", ")}]`,
+          `[live eval] case=${level1Case.id} failing:\n${failureDetail}`,
         );
         console.error(
           `[live eval] raw answer for ${level1Case.id}:\n${answer}`,
         );
       }
 
-      expect(
-        pass,
-        failingIds.length === 0
-          ? undefined
-          : `failing assertions: [${failingIds.join(", ")}]`,
-      ).toBe(true);
+      // Prefer showing match evidence as Received vs empty Expected —
+      // clearer than `expected false to be true`.
+      expect(failureDetail).toBe("");
     },
     LIVE_EVAL_TIMEOUT_MS,
   );

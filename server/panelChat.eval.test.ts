@@ -223,6 +223,17 @@ diagnosis — a clinician can interpret this with symptoms and history.
       expectFailure(PANEL_CHAT_LEVEL1_ELEVATED_TSH_CASE, id, answer);
     });
   });
+
+  test("invent-forbid failures include the matched excerpt as evidence", () => {
+    const results = evaluatePanelChatLevel1(
+      `${PASSING_GLUCOSE}\nClinicians often look at HbA1c next.`,
+      PANEL_CHAT_LEVEL1_GLUCOSE_CASE,
+    );
+    const a1c = results.find((r) => r.id === "no-invented-a1c");
+    expect(a1c?.pass).toBe(false);
+    expect(a1c?.evidence).toMatch(/matched "HbA1c"/);
+    expect(a1c?.evidence).toMatch(/Clinicians often look at HbA1c next/);
+  });
 });
 
 function expectFailure(
