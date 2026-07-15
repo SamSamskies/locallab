@@ -76,6 +76,100 @@ export function mustNotMatch(
   };
 }
 
+function withGlobalFlag(pattern: RegExp): RegExp {
+  const flags = new Set(pattern.flags);
+  flags.add("g");
+  return new RegExp(pattern.source, [...flags].sort().join(""));
+}
+
+/** True when [index, index+length) sits inside a (…) pair (definitional gloss). */
+export function isInsideParentheses(
+  text: string,
+  index: number,
+  length: number,
+): boolean {
+  const before = text.slice(0, index);
+  const open = before.lastIndexOf("(");
+  if (open === -1) return false;
+  if (before.lastIndexOf(")") > open) return false;
+
+  const after = text.slice(index + length);
+  const close = after.indexOf(")");
+  if (close === -1) return false;
+  const nextOpen = after.indexOf("(");
+  return nextOpen === -1 || close < nextOpen;
+}
+
+const OUT_OF_RANGE_POLARITY =
+  /\b(high|low|elevat\w*|above|below|out of range|outside)\b/i;
+
+/**
+ * True when high/low/elevated (etc.) is clearly negated —
+ * e.g. "not low", "isn't elevated", "no indicators of low hemoglobin".
+ */
+export function isNegatedOutOfRangePolarity(
+  answer: string,
+  matchIndex: number,
+  matchText: string,
+): boolean {
+  const polarity = OUT_OF_RANGE_POLARITY.exec(matchText);
+  if (!polarity || polarity.index == null) return false;
+
+  const before = answer.slice(
+    Math.max(0, matchIndex + polarity.index - 55),
+    matchIndex + polarity.index,
+  );
+
+  if (
+    /\b(?:is|are|was|were|looks?|seems?|appears?)(?:\s+\w+){0,2}\s+not\s+$/i.test(
+      before,
+    )
+  ) {
+    return true;
+  }
+  if (/\b(?:isn'?t|aren'?t|wasn'?t|weren'?t)\s+$/i.test(before)) return true;
+  if (/\b(?:not|never|without)\s+$/i.test(before)) return true;
+  if (
+    /\bno\b(?:\s+\w+){0,4}\s+(?:signs?|indicators?|evidence|suggestion|hint|concern)(?:\s+\w+){0,3}\s+of\s+$/i.test(
+      before,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Like mustNotMatch, but skips parenthetical glosses and clearly negated polarity
+ * (allows "anemia (low hemoglobin)" / "hemoglobin is not low"; still fails "hemoglobin is low").
+ */
+export function mustNotMatchClaim(
+  ...patterns: RegExp[]
+): (answer: string) => Level1CheckResult {
+  return (answer) => {
+    for (const pattern of patterns) {
+      const global = withGlobalFlag(pattern);
+      global.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = global.exec(answer)) !== null) {
+        if (isInsideParentheses(answer, match.index, match[0].length)) {
+          continue;
+        }
+        if (isNegatedOutOfRangePolarity(answer, match.index, match[0])) {
+          continue;
+        }
+        return {
+          pass: false,
+          evidence: `matched ${JSON.stringify(match[0])} in ${JSON.stringify(
+            excerptAround(answer, match.index, match[0].length),
+          )}`,
+        };
+      }
+    }
+    return { pass: true };
+  };
+}
+
 /** Fail unless every pattern matches. */
 export function mustMatchAll(
   ...patterns: RegExp[]
@@ -357,7 +451,7 @@ export const PANEL_CHAT_LEVEL1_ALL_NORMAL_CBC_CASE = {
       id: "no-false-out-of-range",
       message:
         "LocalLab must not claim WBC, hemoglobin, or platelets are high, low, or out of range on this all-normal panel",
-      check: mustNotMatch(
+      check: mustNotMatchClaim(
         /\b(wbc|white blood|hemoglobin|hgb|hb|platelets|plt).{0,40}\b(high|low|elevat\w*|above|below|out of range|outside)\b/i,
         /\b(high|low|elevat\w*|above|below).{0,40}\b(wbc|hemoglobin|hgb|platelets|plt)\b/i,
       ),

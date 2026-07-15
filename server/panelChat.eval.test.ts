@@ -258,6 +258,51 @@ A doctor might order an anti-TPO antibody test to check for an autoimmune cause.
     });
   });
 
+  describe("no-false-out-of-range allows glosses and negation", () => {
+    test("definitional parenthetical (anemia = low hemoglobin) is allowed", () => {
+      const answer = `${PASSING_ALL_NORMAL_CBC}
+Your hemoglobin is within range; there are no immediate indicators of anemia (low hemoglobin) based on this metric.`;
+      expect(
+        evaluatePanelChatLevel1(
+          answer,
+          PANEL_CHAT_LEVEL1_ALL_NORMAL_CBC_CASE,
+        ).every((r) => r.pass),
+      ).toBe(true);
+    });
+
+    test("explicitly negated polarity is allowed", () => {
+      const answer = `${PASSING_ALL_NORMAL_CBC}
+Hemoglobin is not low, and WBC is not elevated.`;
+      expect(
+        evaluatePanelChatLevel1(
+          answer,
+          PANEL_CHAT_LEVEL1_ALL_NORMAL_CBC_CASE,
+        ).every((r) => r.pass),
+      ).toBe(true);
+    });
+
+    test("no-indicators-of polarity without parens is allowed", () => {
+      const answer = `${PASSING_ALL_NORMAL_CBC}
+There are no indicators of low hemoglobin on this panel.`;
+      expect(
+        evaluatePanelChatLevel1(
+          answer,
+          PANEL_CHAT_LEVEL1_ALL_NORMAL_CBC_CASE,
+        ).every((r) => r.pass),
+      ).toBe(true);
+    });
+
+    test("a real false out-of-range claim still fails after a benign gloss", () => {
+      const answer = `${PASSING_ALL_NORMAL_CBC}
+No indicators of anemia (low hemoglobin). Hemoglobin looks a bit low though.`;
+      expectFailure(
+        PANEL_CHAT_LEVEL1_ALL_NORMAL_CBC_CASE,
+        "no-false-out-of-range",
+        answer,
+      );
+    });
+  });
+
   test("invent-forbid failures include the matched excerpt as evidence", () => {
     const results = evaluatePanelChatLevel1(
       `${PASSING_GLUCOSE}\nYour A1C is 6.2%.`,
