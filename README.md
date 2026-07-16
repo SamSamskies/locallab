@@ -55,6 +55,10 @@ npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
 
 On failure, the suite logs failing assertion ids and the raw model answer for each case.
 
+### Model comparisons
+
+To compare models on the same Level 1 suite, ask Cursor with the `compare-live-evals` skill, e.g. “compare live evals against gemma4:26b and medgemma1.5:latest”. Reports are written to `evals/comparisons/` (gitignored by default; force-add only when committing a decision record).
+
 ## Configuration
 
 | Variable | Default | Description |

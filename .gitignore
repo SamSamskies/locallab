@@ -4,3 +4,7 @@ data/
 .env
 *.db
 .DS_Store
+
+# Local machine live-eval comparison reports (force-add to commit a decision record)
+evals/comparisons/*
+!evals/comparisons/.gitkeep
