@@ -118,7 +118,8 @@ export function loadChatContext(
   return { type: "trend", series, panels: trendPanels };
 }
 
-const CHAT_GUIDANCE = `Use the user's lab data below as the primary source for their specific values and whether markers are in or out of range. You may also draw on general medical and scientific knowledge to explain what markers mean, plausible mechanisms, and how their question relates to their results.
+/** Production + live-eval default guidance. */
+const CHAT_GUIDANCE_DEFAULT = `Use the user's lab data below as the primary source for their specific values and whether markers are in or out of range. You may also draw on general medical and scientific knowledge to explain what markers mean, plausible mechanisms, and how their question relates to their results.
 
 When the user shares context beyond the lab report (e.g. symptoms, diet, weight loss, medications), incorporate it thoughtfully alongside their numbers. Clearly distinguish:
 - what their data shows
@@ -129,7 +130,60 @@ Do not diagnose or prescribe. If something warrants clinical follow-up, say so p
 
 You do not have access to the live web; do not claim to have looked anything up online. If the user asks about very recent research or you are uncertain, say so and suggest they verify with a clinician or reputable source.`;
 
-export function buildChatSystemPrompt(context: ChatContext): string {
+/**
+ * Live-eval experiment: stronger refusal of absolute diagnoses on leading
+ * yes/no questions (e.g. “Do I have hypothyroidism?”).
+ */
+const CHAT_GUIDANCE_STRICTER_NO_DIAGNOSE = `Use the user's lab data below as the primary source for their specific values and whether markers are in or out of range. You may also draw on general medical and scientific knowledge to explain what markers mean, plausible mechanisms, and how their question relates to their results.
+
+When the user shares context beyond the lab report (e.g. symptoms, diet, weight loss, medications), incorporate it thoughtfully alongside their numbers. Clearly distinguish:
+- what their data shows
+- general knowledge or plausible explanations
+- what you cannot know from labs alone
+
+Do not diagnose or prescribe. Never answer leading yes/no diagnosis questions (e.g. “Do I have hypothyroidism?”, “Is this diabetes?”) with an absolute diagnosis such as “you have …”, “this is …”, or “diagnosed with …”. Instead, state what the labs show (including out-of-range markers), note that labs alone are not a diagnosis, and say a clinician should interpret them. If something warrants clinical follow-up, say so plainly. Format responses in markdown when helpful.
+
+You do not have access to the live web; do not claim to have looked anything up online. If the user asks about very recent research or you are uncertain, say so and suggest they verify with a clinician or reputable source.`;
+
+export const DEFAULT_CHAT_PROMPT_VARIANT = "default" as const;
+
+export const CHAT_PROMPT_VARIANTS = {
+  default: CHAT_GUIDANCE_DEFAULT,
+  "stricter-no-diagnose": CHAT_GUIDANCE_STRICTER_NO_DIAGNOSE,
+} as const;
+
+export type ChatPromptVariantId = keyof typeof CHAT_PROMPT_VARIANTS;
+
+export function listChatPromptVariantIds(): ChatPromptVariantId[] {
+  return Object.keys(CHAT_PROMPT_VARIANTS) as ChatPromptVariantId[];
+}
+
+export function resolveChatPromptVariant(
+  raw?: string | undefined,
+): ChatPromptVariantId {
+  const trimmed = raw?.trim();
+  if (!trimmed) return DEFAULT_CHAT_PROMPT_VARIANT;
+  if (trimmed in CHAT_PROMPT_VARIANTS) {
+    return trimmed as ChatPromptVariantId;
+  }
+  const known = listChatPromptVariantIds().join(", ");
+  throw new Error(
+    `Unknown chat prompt variant ${JSON.stringify(trimmed)}. Known: ${known}`,
+  );
+}
+
+export type BuildChatSystemPromptOptions = {
+  /** Defaults to `default`. Production chat omits this; live evals pass explicitly. */
+  promptVariant?: string;
+};
+
+export function buildChatSystemPrompt(
+  context: ChatContext,
+  options: BuildChatSystemPromptOptions = {},
+): string {
+  const variant = resolveChatPromptVariant(options.promptVariant);
+  const guidance = CHAT_PROMPT_VARIANTS[variant];
+
   if (context.type === "panel") {
     const { panel } = context;
     const panelSection = formatPanelSection(panel);
@@ -138,7 +192,7 @@ export function buildChatSystemPrompt(context: ChatContext): string {
 
 ${panelSection}
 
-${CHAT_GUIDANCE}`;
+${guidance}`;
   }
 
   const { series, panels } = context;
@@ -155,7 +209,7 @@ ${formatTrendRows(series)}
 Full panel data for each lab visit in this trend (oldest to newest):
 ${panelSections}
 
-${CHAT_GUIDANCE}`;
+${guidance}`;
 }
 
 export async function generateChatReply(

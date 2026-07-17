@@ -6,6 +6,7 @@
 //   npm run test:live-eval
 //   npm run test:live-eval -- --model llama3.2
 //   npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
+//   npm run test:live-eval -- --model medgemma1.5:latest --prompt stricter-no-diagnose
 //   OLLAMA_MODEL=llama3.2 npm run test:live-eval
 //
 // Runs server/panelChat.live.eval.test.ts via vitest.live.config.ts
@@ -14,6 +15,7 @@
 // Environment:
 //   LOCALLAB_LIVE_EVAL              Set to 1 by this script (required to unskip the suite)
 //   OLLAMA_MODEL                    Model name (required; override with --model / -m)
+//   LOCALLAB_CHAT_PROMPT            Chat prompt variant (default; --prompt / -p)
 //   LOCALLAB_LIVE_EVAL_TIMEOUT_MS   Per-case timeout in ms (default 900000 / 15m; --timeout-ms / -t)
 //   OLLAMA_URL                      Ollama base URL (default in app: http://localhost:11434)
 //
@@ -66,9 +68,13 @@ function parsePositiveMs(raw, label) {
   return parsed;
 }
 
+/** Known variants — keep in sync with CHAT_PROMPT_VARIANTS in server/services/chat.ts */
+const KNOWN_CHAT_PROMPT_VARIANTS = ["default", "stricter-no-diagnose"];
+
 const { values } = parseArgs({
   options: {
     model: { type: "string", short: "m" },
+    prompt: { type: "string", short: "p" },
     "timeout-ms": { type: "string", short: "t" },
   },
   allowPositionals: true,
@@ -83,6 +89,24 @@ const env = {
 
 if (values.model !== undefined) {
   env.OLLAMA_MODEL = values.model;
+}
+
+if (values.prompt !== undefined) {
+  env.LOCALLAB_CHAT_PROMPT = values.prompt;
+}
+
+if (!String(env.LOCALLAB_CHAT_PROMPT ?? "").trim()) {
+  env.LOCALLAB_CHAT_PROMPT = "default";
+} else {
+  const promptVariant = String(env.LOCALLAB_CHAT_PROMPT).trim();
+  if (!KNOWN_CHAT_PROMPT_VARIANTS.includes(promptVariant)) {
+    console.error(
+      `Unknown --prompt / LOCALLAB_CHAT_PROMPT ${JSON.stringify(promptVariant)}.\n` +
+        `  Known: ${KNOWN_CHAT_PROMPT_VARIANTS.join(", ")}`,
+    );
+    process.exit(1);
+  }
+  env.LOCALLAB_CHAT_PROMPT = promptVariant;
 }
 
 const timeoutFromFlag = parsePositiveMs(values["timeout-ms"], "--timeout-ms");
@@ -105,7 +129,7 @@ if (!String(env.OLLAMA_MODEL ?? "").trim()) {
 }
 
 console.log(
-  `[live-eval] model=${env.OLLAMA_MODEL} timeoutMs=${env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS}`,
+  `[live-eval] model=${env.OLLAMA_MODEL} prompt=${env.LOCALLAB_CHAT_PROMPT} timeoutMs=${env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS}`,
 );
 
 const child = spawn(

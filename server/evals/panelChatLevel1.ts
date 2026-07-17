@@ -292,7 +292,7 @@ export function formatLevel1AssertionFailure(
     : `${result.id}: ${result.message}`;
 }
 
-/** CHAT_GUIDANCE guardrails — reuse unchanged on every panel-chat Level 1 case. */
+/** Chat guidance guardrails — reuse unchanged on every panel-chat Level 1 case. */
 export const SHARED_LEVEL1_ASSERTIONS: Level1Assertion[] = [
   {
     id: "no-diabetes-diagnosis",
