@@ -36,9 +36,9 @@ Compare live evals:
 - [ ] Parse runs (model + optional prompt) from the user message
 - [ ] Confirm Level 1 only (refuse / clarify if they ask for other levels)
 - [ ] For each run: live-eval with --model and --prompt, capture output + wall-clock
-- [ ] Parse pass rate and failing assertion ids
+- [ ] Parse pass rate, failing assertion ids, and raw model answers per case
 - [ ] Write decision note (1 sentence) per run
-- [ ] Write markdown report under evals/comparisons/
+- [ ] Write markdown report under evals/comparisons/ (include model responses)
 - [ ] Tell the user the report path and a one-line summary
 ```
 
@@ -90,6 +90,9 @@ From the captured log, prefer the suite summary lines printed in `afterAll`:
 [live eval] Level 1 pass rate: <passed>/<total> cases
 [live eval] prompt variant: <id>
 [live eval] failing assertion ids: <case>: [<id>, ...]; ...
+[live eval] raw answer begin case=<case-id>
+<full model reply>
+[live eval] raw answer end case=<case-id>
 ```
 
 Also note the launcher line: `[live-eval] model=... prompt=... timeoutMs=...`
@@ -99,6 +102,7 @@ Rules:
 - **Pass rate**: use `passed / 3 cases` (total is always 3 for Level 1). If the summary line is missing, count passed vs failed from per-case lines / vitest results; still report over 3.
 - **Prompt**: prefer `[live eval] prompt variant:`; fall back to the launcher `prompt=` value or the `--prompt` you passed.
 - **Failing assertion ids**: copy assertion ids from the summary. If a case failed with multiple ids, include them all. Format as a comma-separated list, optionally prefixed with case id (`glucose-high: mentions-glucose-108`). Use `none` when pass rate is `3 / 3`.
+- **Model responses**: for **every completed case**, extract the text between `raw answer begin case=<id>` and `raw answer end case=<id>` (inclusive markers not copied). Include **all** cases (pass and fail) — failing assertion ids alone are not enough for grader triage. If a case never finished, omit it and note the error in the decision sentence.
 - **Suite wall-clock**: seconds from the timer around that run's `npm run test:live-eval` invocation (not per-case timeout).
 - If Ollama/model errors prevent any cases from finishing, still write a card: pass rate `0 / 3` (or however many completed), list what failed, and note the error in the decision sentence.
 
@@ -128,9 +132,9 @@ evals/comparisons/level1-<YYYY-MM-DD>-<HHMMSS>-<slug>.md
   - More than three runs: `<N>runs`
 - Sanitize model tags (`:` → `-`). Example: `level1-2026-07-16-161130-gemma4-26b-vs-medgemma1.5-latest.md`
 
-Report body:
+Report body (example uses five-backtick outer fence so inner four-backtick answer fences stay intact):
 
-```markdown
+`````markdown
 # Level 1 live eval comparison
 
 - Date: <YYYY-MM-DD HH:MM:SS local>
@@ -154,12 +158,33 @@ Suite wall-clock: <seconds> s
 
 Decision note (1 sentence): <one sentence>
 
+Model responses:
+
+#### <case-id>
+
+````
+<full model reply for this case>
+````
+
+#### <next-case-id>
+
+````
+...
+````
+
 ### <next run>
 
 ...
-```
+`````
 
 Use the same local clock for the filename timestamp and the `Date:` line. Use the comparison card fields **exactly** as shown (labels and order). One card section per run, in the order the user listed them. Heading is always `Model / Prompt` even when every prompt is `default`.
+
+**Model responses** (required for triage):
+
+- Under each run card, after the decision note, add `Model responses:` then one `#### <case-id>` subsection per completed case (same order as Cases: glucose-high, all-normal-cbc, elevated-tsh-leading)
+- Paste the **full** raw reply from the log markers — do not summarize or truncate
+- Wrap each reply in a four-backtick fence so markdown inside the model reply does not break the report; if the reply itself contains four-backtick fences, use a longer fence
+- Do not invent replies — only text captured between the begin/end markers for that run
 
 ### 6. Finish
 
@@ -176,3 +201,5 @@ Reply with:
 - Do not run `npm test` / `verify` as a substitute for live eval
 - Do not parallelize runs (shared Ollama load skews wall-clock and flakiness)
 - Do not invent failing assertion ids — only what the suite printed
+- Do not invent or paraphrase model responses — only paste from begin/end markers
+- Do not omit model responses from the report when answers were logged (needed for grader triage)

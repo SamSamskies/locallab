@@ -39,6 +39,7 @@ type CaseResult = {
   id: string;
   pass: boolean;
   failingIds: string[];
+  answer: string;
 };
 
 describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
@@ -69,6 +70,12 @@ describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
             .join("; "),
       );
     }
+    // Always dump answers (pass and fail) with begin/end markers for comparison reports.
+    for (const r of caseResults) {
+      console.log(`[live eval] raw answer begin case=${r.id}`);
+      console.log(r.answer);
+      console.log(`[live eval] raw answer end case=${r.id}`);
+    }
   });
 
   test.each(PANEL_CHAT_LEVEL1_CASES)(
@@ -96,14 +103,11 @@ describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
         .map(formatLevel1AssertionFailure)
         .join("\n\n");
 
-      caseResults.push({ id: level1Case.id, pass, failingIds });
+      caseResults.push({ id: level1Case.id, pass, failingIds, answer });
 
       if (!pass) {
         console.error(
           `[live eval] case=${level1Case.id} failing:\n${failureDetail}`,
-        );
-        console.error(
-          `[live eval] raw answer for ${level1Case.id}:\n${answer}`,
         );
       }
 
