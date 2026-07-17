@@ -17,6 +17,14 @@ npm install
 npm run db:push
 ```
 
+## Database backup
+
+```bash
+npm run db:backup
+```
+
+Creates a timestamped copy of `data/app.db` under `data/backups/`.
+
 ## Development
 
 ```bash
