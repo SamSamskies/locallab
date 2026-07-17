@@ -51,16 +51,13 @@ Panel-chat Level 1 live scoring hits your local Ollama model and is **not** part
 npm run test:live-eval
 npm run test:live-eval -- --model llama3.2
 npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
-npm run test:live-eval -- --model medgemma1.5:latest --prompt stricter-no-diagnose
 ```
 
 On failure, the suite logs failing assertion ids and the raw model answer for each case.
 
-Prompt variants (`--prompt` / `LOCALLAB_CHAT_PROMPT`): `default` (production guidance), `stricter-no-diagnose` (stronger refusal of absolute diagnoses on leading yes/no questions). Production chat always uses `default`.
+### Model comparisons
 
-### Model / prompt comparisons
-
-To compare models or prompt variants on the same Level 1 suite, ask Cursor with the `compare-live-evals` skill, e.g. “compare live evals against gemma4:26b and medgemma1.5:latest” or “compare default vs stricter-no-diagnose on medgemma1.5:latest”. Reports are written to `evals/comparisons/` (gitignored by default; force-add only when committing a decision record).
+To compare Ollama models on the same Level 1 suite, ask Cursor with the `compare-live-evals` skill, e.g. “compare live evals against gemma4:26b and medgemma1.5:latest”. Reports are written to `evals/comparisons/` (gitignored by default; force-add only when committing a decision record).
 
 ## Configuration
 
@@ -69,7 +66,6 @@ To compare models or prompt variants on the same Level 1 suite, ask Cursor with 
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama API base URL |
 | `OLLAMA_TIMEOUT_MS` | `0` | Idle timeout while streaming Ollama tokens; `0` disables the limit |
 | `OLLAMA_MODEL` | — | Model for live evals (`npm run test:live-eval`); override with `--model` |
-| `LOCALLAB_CHAT_PROMPT` | `default` | Chat prompt variant for live evals; override with `--prompt` |
 | `LOCALLAB_LIVE_EVAL` | `0` | Keep `0` for normal use; `test:live-eval` sets this to `1` |
 | `LOCALLAB_LIVE_EVAL_TIMEOUT_MS` | `900000` | Per-case live-eval timeout in ms; override with `--timeout-ms` |
 | `PORT` | `3001` | Express API port |

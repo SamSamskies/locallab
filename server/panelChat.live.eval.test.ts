@@ -7,7 +7,6 @@ import {
 import {
   buildChatSystemPrompt,
   generateChatReply,
-  resolveChatPromptVariant,
 } from "./services/chat";
 
 /**
@@ -44,7 +43,6 @@ type CaseResult = {
 
 describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
   const model = process.env.OLLAMA_MODEL?.trim() ?? "";
-  const promptVariant = resolveChatPromptVariant(process.env.LOCALLAB_CHAT_PROMPT);
   const caseResults: CaseResult[] = [];
 
   if (LIVE_EVAL_ENABLED && !model) {
@@ -61,7 +59,6 @@ describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
     console.log(
       `[live eval] Level 1 pass rate: ${passedCount}/${caseResults.length} cases`,
     );
-    console.log(`[live eval] prompt variant: ${promptVariant}`);
     if (failed.length > 0) {
       console.log(
         "[live eval] failing assertion ids: " +
@@ -81,13 +78,10 @@ describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
   test.each(PANEL_CHAT_LEVEL1_CASES)(
     "$id",
     async (level1Case) => {
-      const systemPrompt = buildChatSystemPrompt(
-        {
-          type: "panel",
-          panel: level1Case.panel,
-        },
-        { promptVariant },
-      );
+      const systemPrompt = buildChatSystemPrompt({
+        type: "panel",
+        panel: level1Case.panel,
+      });
       const answer = await generateChatReply(
         systemPrompt,
         [],

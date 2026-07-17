@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { describe, expect, test } from "vitest";
 import * as schema from "./db/schema";
-import { buildChatSystemPrompt, loadChatContext, resolveChatPromptVariant } from "./services/chat";
+import { buildChatSystemPrompt, loadChatContext } from "./services/chat";
 import {
   appendMessages,
   createConversation,
@@ -162,33 +162,6 @@ describe("buildChatSystemPrompt", () => {
     expect(prompt).toContain("general medical and scientific knowledge");
     expect(prompt).toContain("Do not diagnose or prescribe");
     expect(prompt).not.toContain("using only this panel data");
-    expect(prompt).not.toContain("Never answer leading yes/no diagnosis questions");
-  });
-
-  test("stricter-no-diagnose variant strengthens diagnosis refusal", () => {
-    const panel: PanelResponse = {
-      id: 1,
-      label: "CMP",
-      collectedAt: "2024-01-15",
-      sourceFilename: "cmp.pdf",
-      summary: "Mostly normal.",
-      insights: [],
-      createdAt: "2024-01-16T00:00:00.000Z",
-      markers: [],
-    };
-
-    const prompt = buildChatSystemPrompt(
-      { type: "panel", panel },
-      { promptVariant: "stricter-no-diagnose" },
-    );
-    expect(prompt).toContain("Never answer leading yes/no diagnosis questions");
-    expect(prompt).toContain("Do not diagnose or prescribe");
-  });
-
-  test("resolveChatPromptVariant rejects unknown ids", () => {
-    expect(resolveChatPromptVariant(undefined)).toBe("default");
-    expect(resolveChatPromptVariant("  default  ")).toBe("default");
-    expect(() => resolveChatPromptVariant("nope")).toThrow(/Unknown chat prompt variant/);
   });
 
   test("includes trend history rows and related panel markers", () => {
