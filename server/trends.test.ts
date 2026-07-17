@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { describe, expect, test } from "vitest";
 import * as schema from "./db/schema";
-import { getTrendMarkers, getTrendSeries } from "./services/trends";
+import { getOverallTrendContext, getTrendMarkers, getTrendSeries } from "./services/trends";
 
 function createTestDb() {
   const sqlite = new Database(":memory:");
@@ -41,6 +41,8 @@ function seedTestData(db: ReturnType<typeof createTestDb>) {
       label: "Panel A",
       collectedAt: "2024-01-15",
       sourceFilename: "panel-a.pdf",
+      summary: "Mostly normal metabolic panel.",
+      insightsJson: JSON.stringify(["Glucose within range"]),
       createdAt: "2024-01-16T00:00:00.000Z",
     })
     .run();
@@ -51,6 +53,8 @@ function seedTestData(db: ReturnType<typeof createTestDb>) {
       label: "Panel B",
       collectedAt: "2024-06-01",
       sourceFilename: "panel-b.pdf",
+      summary: "Glucose elevated.",
+      insightsJson: JSON.stringify(["Glucose high"]),
       createdAt: "2024-06-02T00:00:00.000Z",
     })
     .run();
@@ -210,5 +214,37 @@ describe("getTrendSeries", () => {
 
     expect(getTrendSeries(db, "Hemoglobin").points).toEqual([]);
     expect(getTrendSeries(db, "Glucose").points).toHaveLength(2);
+  });
+});
+
+describe("getOverallTrendContext", () => {
+  test("returns visits and first-to-latest marker summaries", () => {
+    const db = createTestDb();
+    seedTestData(db);
+
+    const context = getOverallTrendContext(db);
+
+    expect(context.visits).toHaveLength(2);
+    expect(context.visits[0]).toMatchObject({
+      panelLabel: "Panel A",
+      collectedAt: "2024-01-15",
+      summary: "Mostly normal metabolic panel.",
+      insights: ["Glucose within range"],
+    });
+    expect(context.visits[1]).toMatchObject({
+      panelLabel: "Panel B",
+      collectedAt: "2024-06-01",
+      summary: "Glucose elevated.",
+    });
+
+    expect(context.markers).toHaveLength(2);
+    const glucose = context.markers.find((m) => m.name.toLowerCase() === "glucose");
+    expect(glucose).toMatchObject({
+      firstValue: 95,
+      lastValue: 110,
+      firstFlag: "normal",
+      lastFlag: "high",
+      dataPointCount: 2,
+    });
   });
 });

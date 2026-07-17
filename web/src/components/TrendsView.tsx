@@ -11,7 +11,14 @@ import {
   YAxis,
 } from "recharts";
 import type { DotProps } from "recharts";
-import { fetchCachedTrendInsight, fetchTrendInsights, fetchTrendMarkers, fetchTrendSeries } from "../api";
+import {
+  fetchCachedOverallTrendInsight,
+  fetchCachedTrendInsight,
+  fetchOverallTrendInsights,
+  fetchTrendInsights,
+  fetchTrendMarkers,
+  fetchTrendSeries,
+} from "../api";
 import { formatDate } from "../formatDate";
 import { ChatPanel } from "./ChatPanel";
 import { MarkdownContent } from "./MarkdownContent";
@@ -100,6 +107,51 @@ function ChartTooltip({ active, payload }: ChartTooltipProps) {
   );
 }
 
+interface InsightPanelProps {
+  title: string;
+  loading: boolean;
+  status: string;
+  thinkingText: string;
+  contentText: string;
+  error: string | null;
+}
+
+function InsightPanel({
+  title,
+  loading,
+  status,
+  thinkingText,
+  contentText,
+  error,
+}: InsightPanelProps) {
+  return (
+    <div className="trend-insights">
+      <div className="trend-insights-header">
+        <h3>{title}</h3>
+        {loading && <div className="spinner trend-insights-spinner" />}
+      </div>
+      {error && <div className="error-banner">{error}</div>}
+      {!error && (
+        <div className="trend-insights-body">
+          {thinkingText ? (
+            <details className="trend-insights-thinking" open={loading}>
+              <summary>Model reasoning</summary>
+              <pre>{thinkingText}</pre>
+            </details>
+          ) : null}
+          {contentText ? (
+            <MarkdownContent content={contentText} />
+          ) : loading ? (
+            <p className="trend-insights-waiting">{status}</p>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type TrendsSubTab = "overall" | "marker";
+
 interface TrendsViewProps {
   model: string;
   initialMarker?: string | null;
@@ -111,6 +163,7 @@ function resolveMarkerName(markers: TrendMarkerSummary[], name: string): string 
 }
 
 export function TrendsView({ model, initialMarker }: TrendsViewProps) {
+  const [subTab, setSubTab] = useState<TrendsSubTab>(initialMarker ? "marker" : "overall");
   const [markers, setMarkers] = useState<TrendMarkerSummary[]>([]);
   const [selected, setSelected] = useState("");
   const [series, setSeries] = useState<TrendSeries | null>(null);
@@ -126,6 +179,16 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
   const [hasCachedInsight, setHasCachedInsight] = useState(false);
   const [loadingCachedInsight, setLoadingCachedInsight] = useState(false);
   const insightStreamRef = useRef<AbortController | null>(null);
+
+  const [overallInsightLoading, setOverallInsightLoading] = useState(false);
+  const [overallInsightStatus, setOverallInsightStatus] = useState("");
+  const [overallThinkingText, setOverallThinkingText] = useState("");
+  const [overallContentText, setOverallContentText] = useState("");
+  const [overallInsightError, setOverallInsightError] = useState<string | null>(null);
+  const [showOverallInsights, setShowOverallInsights] = useState(false);
+  const [hasCachedOverallInsight, setHasCachedOverallInsight] = useState(false);
+  const [loadingCachedOverallInsight, setLoadingCachedOverallInsight] = useState(false);
+  const overallInsightStreamRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     insightStreamRef.current?.abort();
@@ -163,8 +226,57 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
   useEffect(() => {
     if (!initialMarker || markers.length === 0) return;
     const resolved = resolveMarkerName(markers, initialMarker);
-    if (resolved) setSelected(resolved);
+    if (resolved) {
+      setSelected(resolved);
+      setSubTab("marker");
+    }
   }, [initialMarker, markers]);
+
+  useEffect(() => {
+    if (markers.length === 0) {
+      setShowOverallInsights(false);
+      setHasCachedOverallInsight(false);
+      setOverallThinkingText("");
+      setOverallContentText("");
+      setOverallInsightError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingCachedOverallInsight(true);
+    setOverallInsightError(null);
+
+    fetchCachedOverallTrendInsight()
+      .then((cached) => {
+        if (cancelled) return;
+        if (cached) {
+          setShowOverallInsights(true);
+          setHasCachedOverallInsight(true);
+          setOverallThinkingText("");
+          setOverallContentText(cached.content);
+        } else {
+          setShowOverallInsights(false);
+          setHasCachedOverallInsight(false);
+          setOverallThinkingText("");
+          setOverallContentText("");
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setOverallInsightError(
+          e instanceof Error ? e.message : "Failed to load cached overall insights",
+        );
+        setShowOverallInsights(false);
+        setHasCachedOverallInsight(false);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCachedOverallInsight(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [markers]);
 
   useEffect(() => {
     if (!selected) {
@@ -246,6 +358,55 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
   const { refLow, refHigh } = useMemo(() => latestRefRange(chartRows), [chartRows]);
   const unit = chartRows[0]?.unit ?? markers.find((m) => m.name === selected)?.units[0] ?? null;
 
+  const handleGetOverallInsights = async () => {
+    if (markers.length === 0 || !model) return;
+
+    overallInsightStreamRef.current?.abort();
+    const controller = new AbortController();
+    overallInsightStreamRef.current = controller;
+
+    setShowOverallInsights(true);
+    setOverallInsightLoading(true);
+    setOverallInsightStatus("Analyzing overall health trends with local LLM…");
+    setOverallThinkingText("");
+    setOverallContentText("");
+    setOverallInsightError(null);
+
+    try {
+      await fetchOverallTrendInsights(
+        model,
+        (event) => {
+          if (controller.signal.aborted) return;
+
+          if (event.type === "status") {
+            setOverallInsightStatus(event.message);
+          } else if (event.type === "token") {
+            if (event.phase === "thinking") {
+              setOverallThinkingText((prev) => prev + event.content);
+            } else {
+              setOverallContentText((prev) => prev + event.content);
+            }
+          }
+        },
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      setHasCachedOverallInsight(true);
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      setOverallInsightError(
+        e instanceof Error ? e.message : "Failed to generate overall insights",
+      );
+    } finally {
+      if (overallInsightStreamRef.current === controller) {
+        overallInsightStreamRef.current = null;
+      }
+      if (!controller.signal.aborted) {
+        setOverallInsightLoading(false);
+      }
+    }
+  };
+
   const handleGetInsights = async () => {
     if (!selected || chartRows.length === 0 || !model) return;
 
@@ -320,119 +481,167 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
           <h2>Trends</h2>
           <div className="panel-meta">Values across uploaded panels</div>
         </div>
-        <select
-          className="model-select trends-select"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-        >
-          {markers.map((m) => (
-            <option key={m.name} value={m.name}>
-              {m.name} ({m.dataPointCount})
-            </option>
-          ))}
-        </select>
+        <div className="tabs trends-subtabs" role="tablist" aria-label="Trends view">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "overall"}
+            className={`tab ${subTab === "overall" ? "active" : ""}`}
+            onClick={() => setSubTab("overall")}
+          >
+            Overall
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "marker"}
+            className={`tab ${subTab === "marker" ? "active" : ""}`}
+            onClick={() => setSubTab("marker")}
+          >
+            By marker
+          </button>
+        </div>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
-
-      {loadingSeries ? (
-        <div className="loading chart-loading">
-          <div className="spinner" />
-        </div>
-      ) : chartRows.length === 0 ? (
-        <p className="empty-state" style={{ padding: "2rem 0" }}>
-          No data points for this marker.
-        </p>
-      ) : (
-        <>
-          <div className="trends-toolbar">
+      {subTab === "overall" ? (
+        <section className="overall-health-section">
+          <div className="overall-health-header">
+            <p className="overall-health-meta">
+              Cross-marker patterns across your uploaded panels
+            </p>
             <button
               type="button"
               className="btn btn-primary"
-              onClick={handleGetInsights}
-              disabled={insightLoading || loadingCachedInsight || !model}
+              onClick={handleGetOverallInsights}
+              disabled={overallInsightLoading || loadingCachedOverallInsight || !model}
             >
-              {insightLoading
+              {overallInsightLoading
                 ? "Generating insights…"
-                : hasCachedInsight
+                : hasCachedOverallInsight
                   ? "Refresh insights"
                   : "Get insights"}
             </button>
           </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartRows} margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                <CartesianGrid stroke="var(--border-strong)" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-                  axisLine={{ stroke: "var(--border)" }}
-                  tickLine={{ stroke: "var(--border)" }}
-                />
-                <YAxis
-                  tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-                  axisLine={{ stroke: "var(--border)" }}
-                  tickLine={{ stroke: "var(--border)" }}
-                  label={
-                    unit
-                      ? {
-                          value: unit,
-                          angle: -90,
-                          position: "insideLeft",
-                          fill: "var(--text-muted)",
-                          fontSize: 12,
-                        }
-                      : undefined
-                  }
-                />
-                {refLow != null && refHigh != null && (
-                  <ReferenceArea
-                    y1={refLow}
-                    y2={refHigh}
-                    fill="var(--ref-range-fill)"
-                    stroke="var(--ref-range-stroke)"
-                    strokeWidth={1}
-                  />
-                )}
-                <Tooltip content={<ChartTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="var(--chart-line)"
-                  strokeWidth={2}
-                  dot={<FlagDot />}
-                  activeDot={<FlagDot active />}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-          {showInsights && (
-            <div className="trend-insights">
-              <div className="trend-insights-header">
-                <h3>Trend insights</h3>
-                {insightLoading && <div className="spinner trend-insights-spinner" />}
-              </div>
-              {insightError && <div className="error-banner">{insightError}</div>}
-              {!insightError && (
-                <div className="trend-insights-body">
-                  {thinkingText ? (
-                    <details className="trend-insights-thinking" open={insightLoading}>
-                      <summary>Model reasoning</summary>
-                      <pre>{thinkingText}</pre>
-                    </details>
-                  ) : null}
-                  {contentText ? (
-                    <MarkdownContent content={contentText} />
-                  ) : insightLoading ? (
-                    <p className="trend-insights-waiting">{insightStatus}</p>
-                  ) : null}
-                </div>
-              )}
-            </div>
+          {showOverallInsights ? (
+            <InsightPanel
+              title="Overall health insights"
+              loading={overallInsightLoading}
+              status={overallInsightStatus}
+              thinkingText={overallThinkingText}
+              contentText={overallContentText}
+              error={overallInsightError}
+            />
+          ) : (
+            <p className="overall-health-empty">
+              Generate insights to see how markers are moving together over time.
+            </p>
           )}
+        </section>
+      ) : (
+        <>
+          <div className="trends-marker-header">
+            <select
+              className="model-select trends-select"
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              aria-label="Marker"
+            >
+              {markers.map((m) => (
+                <option key={m.name} value={m.name}>
+                  {m.name} ({m.dataPointCount})
+                </option>
+              ))}
+            </select>
+            {chartRows.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleGetInsights}
+                disabled={insightLoading || loadingCachedInsight || !model}
+              >
+                {insightLoading
+                  ? "Generating insights…"
+                  : hasCachedInsight
+                    ? "Refresh insights"
+                    : "Get insights"}
+              </button>
+            )}
+          </div>
 
-          {selected && (
-            <ChatPanel contextType="trend" contextKey={selected} model={model} />
+          {error && <div className="error-banner">{error}</div>}
+
+          {loadingSeries ? (
+            <div className="loading chart-loading">
+              <div className="spinner" />
+            </div>
+          ) : chartRows.length === 0 ? (
+            <p className="empty-state" style={{ padding: "2rem 0" }}>
+              No data points for this marker.
+            </p>
+          ) : (
+            <>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartRows} margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                    <CartesianGrid stroke="var(--border-strong)" strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                      axisLine={{ stroke: "var(--border)" }}
+                      tickLine={{ stroke: "var(--border)" }}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                      axisLine={{ stroke: "var(--border)" }}
+                      tickLine={{ stroke: "var(--border)" }}
+                      label={
+                        unit
+                          ? {
+                              value: unit,
+                              angle: -90,
+                              position: "insideLeft",
+                              fill: "var(--text-muted)",
+                              fontSize: 12,
+                            }
+                          : undefined
+                      }
+                    />
+                    {refLow != null && refHigh != null && (
+                      <ReferenceArea
+                        y1={refLow}
+                        y2={refHigh}
+                        fill="var(--ref-range-fill)"
+                        stroke="var(--ref-range-stroke)"
+                        strokeWidth={1}
+                      />
+                    )}
+                    <Tooltip content={<ChartTooltip />} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="var(--chart-line)"
+                      strokeWidth={2}
+                      dot={<FlagDot />}
+                      activeDot={<FlagDot active />}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              {showInsights && (
+                <InsightPanel
+                  title="Trend insights"
+                  loading={insightLoading}
+                  status={insightStatus}
+                  thinkingText={thinkingText}
+                  contentText={contentText}
+                  error={insightError}
+                />
+              )}
+
+              {selected && (
+                <ChatPanel contextType="trend" contextKey={selected} model={model} />
+              )}
+            </>
           )}
         </>
       )}

@@ -3,11 +3,14 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { describe, expect, test } from "vitest";
 import * as schema from "./db/schema";
 import {
+  getCachedOverallTrendInsight,
   getCachedTrendInsight,
+  overallTrendFingerprint,
+  saveCachedOverallTrendInsight,
   saveCachedTrendInsight,
   trendSeriesFingerprint,
 } from "./services/trendInsightCache";
-import type { TrendSeries } from "./shared/schema";
+import type { OverallTrendContext, TrendSeries } from "./shared/schema";
 
 function createTestDb() {
   const sqlite = new Database(":memory:");
@@ -128,5 +131,88 @@ describe("trend insight cache", () => {
     expect(getCachedTrendInsight(db, "Glucose", glucoseSeries)).toMatchObject({
       content: "New insight.",
     });
+  });
+});
+
+const overallContext: OverallTrendContext = {
+  visits: [
+    {
+      panelId: 1,
+      panelLabel: "Panel A",
+      collectedAt: "2024-01-15",
+      summary: "Mostly normal.",
+      insights: ["Glucose ok"],
+    },
+    {
+      panelId: 2,
+      panelLabel: "Panel B",
+      collectedAt: "2024-06-01",
+      summary: "Glucose up.",
+      insights: ["Glucose high"],
+    },
+  ],
+  markers: [
+    {
+      name: "Glucose",
+      category: "Metabolic",
+      unit: "mg/dL",
+      dataPointCount: 2,
+      firstCollectedAt: "2024-01-15",
+      lastCollectedAt: "2024-06-01",
+      firstValue: 95,
+      lastValue: 110,
+      firstFlag: "normal",
+      lastFlag: "high",
+      latestRefLow: 70,
+      latestRefHigh: 100,
+      latestRefText: "70-100",
+    },
+  ],
+};
+
+describe("overallTrendFingerprint", () => {
+  test("changes when overall data changes", () => {
+    const original = overallTrendFingerprint(overallContext);
+    const updated = overallTrendFingerprint({
+      ...overallContext,
+      markers: [
+        {
+          ...overallContext.markers[0]!,
+          lastValue: 120,
+        },
+      ],
+    });
+
+    expect(original).not.toBe(updated);
+  });
+});
+
+describe("overall trend insight cache", () => {
+  test("saves and retrieves overall insight", () => {
+    const db = createTestDb();
+
+    saveCachedOverallTrendInsight(db, overallContext, "Mixed metabolic trend.");
+
+    expect(getCachedOverallTrendInsight(db, overallContext)).toMatchObject({
+      content: "Mixed metabolic trend.",
+    });
+  });
+
+  test("invalidates overall cache when data changes", () => {
+    const db = createTestDb();
+
+    saveCachedOverallTrendInsight(db, overallContext, "Old overall.");
+
+    const updated: OverallTrendContext = {
+      ...overallContext,
+      markers: [
+        {
+          ...overallContext.markers[0]!,
+          lastValue: 120,
+        },
+      ],
+    };
+
+    expect(getCachedOverallTrendInsight(db, updated)).toBeNull();
   });
 });

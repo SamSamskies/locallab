@@ -104,6 +104,41 @@ export const trendSeriesSchema = z.object({
 
 export type TrendSeries = z.infer<typeof trendSeriesSchema>;
 
+export const overallTrendVisitSchema = z.object({
+  panelId: z.number(),
+  panelLabel: z.string(),
+  collectedAt: z.string(),
+  summary: z.string().nullable(),
+  insights: z.array(z.string()),
+});
+
+export type OverallTrendVisit = z.infer<typeof overallTrendVisitSchema>;
+
+export const overallTrendMarkerSchema = z.object({
+  name: z.string(),
+  category: z.string().nullable(),
+  unit: z.string().nullable(),
+  dataPointCount: z.number(),
+  firstCollectedAt: z.string(),
+  lastCollectedAt: z.string(),
+  firstValue: z.number(),
+  lastValue: z.number(),
+  firstFlag: markerFlagSchema,
+  lastFlag: markerFlagSchema,
+  latestRefLow: z.number().nullable(),
+  latestRefHigh: z.number().nullable(),
+  latestRefText: z.string().nullable(),
+});
+
+export type OverallTrendMarker = z.infer<typeof overallTrendMarkerSchema>;
+
+export const overallTrendContextSchema = z.object({
+  visits: z.array(overallTrendVisitSchema),
+  markers: z.array(overallTrendMarkerSchema),
+});
+
+export type OverallTrendContext = z.infer<typeof overallTrendContextSchema>;
+
 export type UploadStreamEvent =
   | { type: "status"; message: string }
   | { type: "token"; content: string; phase: "thinking" | "content" }

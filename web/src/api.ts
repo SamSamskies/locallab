@@ -207,6 +207,38 @@ export async function fetchTrendInsights(
   );
 }
 
+export async function fetchCachedOverallTrendInsight(): Promise<CachedTrendInsight | null> {
+  const response = await fetch("/api/trends/insights/overall");
+  if (response.status === 404) return null;
+  return handleResponse(response);
+}
+
+export async function fetchOverallTrendInsights(
+  model: string,
+  onEvent?: (event: TrendInsightStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch("/api/trends/insights/overall", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model }),
+    signal,
+  });
+
+  await readNdjsonStream(
+    response,
+    parseTrendInsightLine,
+    onEvent,
+    (event) => {
+      if (event.type === "error") {
+        throw new Error(event.error);
+      }
+      return event.type === "done";
+    },
+    signal,
+  );
+}
+
 export async function fetchConversations(
   contextType: ChatContextType,
   contextKey: string,

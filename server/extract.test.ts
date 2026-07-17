@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildExtractionPrompt } from "./services/extract";
-import { buildTrendInsightPrompt } from "./services/trendInsights";
+import {
+  buildOverallTrendInsightPrompt,
+  buildTrendInsightPrompt,
+} from "./services/trendInsights";
 import { extractPdfText } from "./services/pdf";
 import {
   normalizeFlag,
@@ -146,6 +149,67 @@ describe("buildTrendInsightPrompt", () => {
     expect(prompt).toContain("2024-06-01");
     expect(prompt).toContain("110 mg/dL");
     expect(prompt).toContain("Format your response in markdown");
+  });
+});
+
+describe("buildOverallTrendInsightPrompt", () => {
+  test("includes visits, out-of-range markers, and first-to-latest overview", () => {
+    const prompt = buildOverallTrendInsightPrompt({
+      visits: [
+        {
+          panelId: 1,
+          panelLabel: "Panel A",
+          collectedAt: "2024-01-15",
+          summary: "Mostly normal metabolic panel.",
+          insights: ["Glucose within range"],
+        },
+        {
+          panelId: 2,
+          panelLabel: "Panel B",
+          collectedAt: "2024-06-01",
+          summary: "Glucose elevated.",
+          insights: ["Glucose high"],
+        },
+      ],
+      markers: [
+        {
+          name: "Glucose",
+          category: "Metabolic",
+          unit: "mg/dL",
+          dataPointCount: 2,
+          firstCollectedAt: "2024-01-15",
+          lastCollectedAt: "2024-06-01",
+          firstValue: 95,
+          lastValue: 110,
+          firstFlag: "normal",
+          lastFlag: "high",
+          latestRefLow: 70,
+          latestRefHigh: 100,
+          latestRefText: "70-100",
+        },
+        {
+          name: "Creatinine",
+          category: "Metabolic",
+          unit: "mg/dL",
+          dataPointCount: 1,
+          firstCollectedAt: "2024-06-01",
+          lastCollectedAt: "2024-06-01",
+          firstValue: 1.0,
+          lastValue: 1.0,
+          firstFlag: "normal",
+          lastFlag: "normal",
+          latestRefLow: 0.6,
+          latestRefHigh: 1.3,
+          latestRefText: null,
+        },
+      ],
+    });
+
+    expect(prompt).toContain("overall lab health trend");
+    expect(prompt).toContain("Mostly normal metabolic panel.");
+    expect(prompt).toContain("Glucose: 110 mg/dL (high)");
+    expect(prompt).toContain("95 mg/dL (normal, 2024-01-15) → 110 mg/dL (high, 2024-06-01)");
+    expect(prompt).toContain("Creatinine");
   });
 });
 
