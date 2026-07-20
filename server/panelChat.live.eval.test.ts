@@ -47,7 +47,7 @@ describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
 
   if (LIVE_EVAL_ENABLED && !model) {
     throw new Error(
-      'OLLAMA_MODEL must be set when LOCALLAB_LIVE_EVAL=1 (e.g. npm run test:live-eval -- --model llama3.2)',
+      'OLLAMA_MODEL must be set when LOCALLAB_LIVE_EVAL=1 (e.g. npm run test:live-eval -- --model gemma4:26b)',
     );
   }
 

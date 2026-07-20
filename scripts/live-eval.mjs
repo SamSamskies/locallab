@@ -4,9 +4,9 @@
 //
 // Usage:
 //   npm run test:live-eval
-//   npm run test:live-eval -- --suite trend --model llama3.2
+//   npm run test:live-eval -- --suite trend --model gemma4:26b
 //   npm run test:live-eval -- --suite panel --model qwen3.6:27b --timeout-ms 1200000
-//   OLLAMA_MODEL=llama3.2 npm run test:live-eval
+//   OLLAMA_MODEL=gemma4:26b npm run test:live-eval
 //
 // Runs server/*.live.eval.test.ts via vitest.live.config.ts
 // (those files are excluded from default npm test).

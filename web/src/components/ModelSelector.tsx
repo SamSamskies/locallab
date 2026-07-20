@@ -41,7 +41,7 @@ export function ModelSelector({
         <div className="card-title">Model</div>
         <p className="model-message">
           No Ollama models found. Pull one first, for example:{" "}
-          <code>ollama pull llama3.2</code>
+          <code>ollama pull gemma4:26b</code>
         </p>
       </div>
     );

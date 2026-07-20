@@ -7,7 +7,7 @@ A privacy-first, fully-local web app for analyzing blood work results. Upload a 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) 20+
-- [Ollama](https://ollama.com) running locally with at least one model pulled (e.g. `ollama pull llama3.2`)
+- [Ollama](https://ollama.com) running locally with at least one model pulled (e.g. `ollama pull gemma4:26b`)
 
 ## Setup
 
@@ -56,8 +56,8 @@ Runs TypeScript type-checking (`tsc --noEmit`) and unit tests (canned graders on
 Panel and trend Level 1 live scoring hit your local Ollama model and are **not** part of `npm test` / `npm run verify`. Requires Ollama running and `OLLAMA_MODEL` set (via `.env` or `--model`). Use `--suite panel|trend|all` (default `all`).
 
 ```bash
-npm run test:live-eval -- --suite panel --model llama3.2
-npm run test:live-eval -- --suite trend --model gemma4:26b-mlx
+npm run test:live-eval -- --suite panel --model gemma4:26b
+npm run test:live-eval -- --suite trend --model gemma4:26b
 npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
 ```
 
