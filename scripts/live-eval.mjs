@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 //
-// Run gated panel-chat Level 1 live scoring evals against a local Ollama model.
+// Run gated Level 1 live scoring evals against a local Ollama model.
 //
 // Usage:
 //   npm run test:live-eval
-//   npm run test:live-eval -- --model llama3.2
-//   npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
+//   npm run test:live-eval -- --suite trend --model llama3.2
+//   npm run test:live-eval -- --suite panel --model qwen3.6:27b --timeout-ms 1200000
 //   OLLAMA_MODEL=llama3.2 npm run test:live-eval
 //
-// Runs server/panelChat.live.eval.test.ts via vitest.live.config.ts
-// (that file is excluded from default npm test).
+// Runs server/*.live.eval.test.ts via vitest.live.config.ts
+// (those files are excluded from default npm test).
 //
 // Environment:
 //   LOCALLAB_LIVE_EVAL              Set to 1 by this script (required to unskip the suite)
@@ -25,8 +25,10 @@ import { parseArgs } from "node:util";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_TIMEOUT_MS = 900_000;
-const LIVE_EVAL_FILE = "server/panelChat.live.eval.test.ts";
-
+const LIVE_EVAL_FILES = {
+  panel: "server/panelChat.live.eval.test.ts",
+  trend: "server/trendChat.live.eval.test.ts",
+};
 
 /** @returns {Record<string, string>} */
 function loadDotEnv(filePath) {
@@ -66,10 +68,29 @@ function parsePositiveMs(raw, label) {
   return parsed;
 }
 
+/**
+ * @param {string | undefined} raw
+ * @returns {string[]}
+ */
+function resolveSuiteFiles(raw) {
+  const suite = (raw ?? "all").trim().toLowerCase();
+  if (suite === "all") {
+    return [LIVE_EVAL_FILES.panel, LIVE_EVAL_FILES.trend];
+  }
+  if (suite === "panel" || suite === "trend") {
+    return [LIVE_EVAL_FILES[suite]];
+  }
+  console.error(
+    `--suite must be panel, trend, or all (got ${JSON.stringify(raw)}).`,
+  );
+  process.exit(1);
+}
+
 const { values } = parseArgs({
   options: {
     model: { type: "string", short: "m" },
     "timeout-ms": { type: "string", short: "t" },
+    suite: { type: "string", short: "s" },
   },
   allowPositionals: true,
 });
@@ -104,8 +125,10 @@ if (!String(env.OLLAMA_MODEL ?? "").trim()) {
   process.exit(1);
 }
 
+const suiteFiles = resolveSuiteFiles(values.suite);
+
 console.log(
-  `[live-eval] model=${env.OLLAMA_MODEL} timeoutMs=${env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS}`,
+  `[live-eval] suite=${values.suite ?? "all"} model=${env.OLLAMA_MODEL} timeoutMs=${env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS}`,
 );
 
 const child = spawn(
@@ -115,7 +138,7 @@ const child = spawn(
     "run",
     "--config",
     "vitest.live.config.ts",
-    LIVE_EVAL_FILE,
+    ...suiteFiles,
   ],
   {
     cwd: root,

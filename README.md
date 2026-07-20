@@ -53,19 +53,22 @@ Runs TypeScript type-checking (`tsc --noEmit`) and unit tests (canned graders on
 
 ## Live evals
 
-Panel-chat Level 1 live scoring hits your local Ollama model and is **not** part of `npm test` / `npm run verify`. Requires Ollama running and `OLLAMA_MODEL` set (via `.env` or `--model`).
+Panel and trend Level 1 live scoring hit your local Ollama model and are **not** part of `npm test` / `npm run verify`. Requires Ollama running and `OLLAMA_MODEL` set (via `.env` or `--model`). Use `--suite panel|trend|all` (default `all`).
 
 ```bash
-npm run test:live-eval
-npm run test:live-eval -- --model llama3.2
+npm run test:live-eval -- --suite panel --model llama3.2
+npm run test:live-eval -- --suite trend --model gemma4:26b-mlx
 npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
 ```
 
 On failure, the suite logs failing assertion ids and the raw model answer for each case.
 
-### Model comparisons
+### Baselines and model comparisons
 
-To compare Ollama models on the same Level 1 suite, ask Cursor with the `compare-live-evals` skill, e.g. “compare live evals against gemma4:26b and medgemma1.5:latest”. Reports are written to `evals/comparisons/` (gitignored by default; force-add only when committing a decision record).
+- **Baseline** (one model; suite `panel`, `trend`, or `all` → two files): ask Cursor with the `baseline-live-evals` skill, e.g. “baseline trend on gemma4:26b” or “baseline all on gemma4:26b-mlx”. Reports go to `evals/baselines/`.
+- **Compare** (same suite, multiple models): ask with `compare-live-evals`, e.g. “compare trend live evals against gemma4:26b and medgemma1.5:latest” (suite defaults to panel if omitted). Reports go to `evals/comparisons/`.
+
+Both report dirs are gitignored by default; force-add only when committing a decision record.
 
 ## Configuration
 

@@ -5,6 +5,8 @@ data/
 *.db
 .DS_Store
 
-# Local machine live-eval comparison reports (force-add to commit a decision record)
+# Local machine live-eval reports (force-add to commit a decision record)
 evals/comparisons/*
 !evals/comparisons/.gitkeep
+evals/baselines/*
+!evals/baselines/.gitkeep
