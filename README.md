@@ -70,6 +70,12 @@ On failure, the suite logs failing assertion ids and the raw model answer for ea
 
 Both report dirs are gitignored by default; force-add only when committing a decision record.
 
+### Ship gate (dual suite)
+
+Before merging a chat default, prompt/guidance, or production-harness change: both Level 1 suites must pass separately on the exact production Ollama tag (`npm run test:live-eval -- --suite panel` then `--suite trend`); do not average scores, skip a suite, or ship on a single lucky green — triage true fail vs grader FP vs flake first, and prefer pass^k over pass@1.
+
+Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OLLAMA_MODEL` (local default: `gemma4:26b-mlx`); document any one-line override in the PR.
+
 ## Configuration
 
 | Variable | Default | Description |

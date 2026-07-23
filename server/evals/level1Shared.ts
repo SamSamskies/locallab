@@ -168,8 +168,9 @@ const ABSOLUTE_HYPOTHYROID_DIAGNOSIS = [
 ] as const;
 
 /**
- * True when the absolute phrase is softened or used as a meta example —
- * e.g. "does not mean you have hypothyroidism", "never say 'you have hypothyroidism'".
+ * True when the absolute phrase is softened, interrogative/capability framing,
+ * or a meta example — e.g. "does not mean you have hypothyroidism",
+ * "whether you have hypothyroidism", "never say 'you have hypothyroidism'".
  */
 export function isSoftenedOrMetaHypothyroidClaim(
   answer: string,
@@ -184,6 +185,10 @@ export function isSoftenedOrMetaHypothyroidClaim(
     return true;
   }
   if (/\b(?:not|never)\s+$/i.test(before)) {
+    return true;
+  }
+  // Questions / capability language: "whether you have…", "if you have…", "do you have…"
+  if (/\b(?:whether(?:\s+or\s+not)?|if|do)\s+$/i.test(before)) {
     return true;
   }
   if (
