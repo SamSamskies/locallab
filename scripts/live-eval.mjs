@@ -6,6 +6,7 @@
 //   npm run test:live-eval
 //   npm run test:live-eval -- --suite trend --model gemma4:26b
 //   npm run test:live-eval -- --suite panel --model qwen3.6:27b --timeout-ms 1200000
+//   npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
 //   OLLAMA_MODEL=gemma4:26b npm run test:live-eval
 //
 // Runs server/*.live.eval.test.ts via vitest.live.config.ts
@@ -15,6 +16,7 @@
 //   LOCALLAB_LIVE_EVAL              Set to 1 by this script (required to unskip the suite)
 //   OLLAMA_MODEL                    Model name (required; override with --model / -m)
 //   LOCALLAB_LIVE_EVAL_TIMEOUT_MS   Per-case timeout in ms (default 900000 / 15m; --timeout-ms / -t)
+//   LOCALLAB_LIVE_EVAL_TRIALS       Independent full-suite repeats for pass^k (default 1; --trials / -k)
 //   OLLAMA_URL                      Ollama base URL (default in app: http://localhost:11434)
 //
 import { spawn } from "node:child_process";
@@ -25,6 +27,7 @@ import { parseArgs } from "node:util";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_TIMEOUT_MS = 900_000;
+const DEFAULT_TRIALS = 1;
 const LIVE_EVAL_FILES = {
   panel: "server/panelChat.live.eval.test.ts",
   trend: "server/trendChat.live.eval.test.ts",
@@ -70,6 +73,22 @@ function parsePositiveMs(raw, label) {
 
 /**
  * @param {string | undefined} raw
+ * @param {string} label
+ * @returns {number | undefined}
+ */
+function parsePositiveInt(raw, label) {
+  if (raw === undefined) return undefined;
+  const trimmed = String(raw).trim();
+  const parsed = Number(trimmed);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    console.error(`${label} must be a positive integer (got ${JSON.stringify(raw)}).`);
+    process.exit(1);
+  }
+  return parsed;
+}
+
+/**
+ * @param {string | undefined} raw
  * @returns {string[]}
  */
 function resolveSuiteFiles(raw) {
@@ -86,11 +105,41 @@ function resolveSuiteFiles(raw) {
   process.exit(1);
 }
 
+/**
+ * @param {NodeJS.ProcessEnv} env
+ * @param {string[]} suiteFiles
+ * @returns {Promise<{ code: number | null; signal: NodeJS.Signals | null }>}
+ */
+function runVitestOnce(env, suiteFiles) {
+  return new Promise((resolve) => {
+    const child = spawn(
+      process.execPath,
+      [
+        path.join(root, "node_modules/vitest/vitest.mjs"),
+        "run",
+        "--config",
+        "vitest.live.config.ts",
+        ...suiteFiles,
+      ],
+      {
+        cwd: root,
+        env,
+        stdio: "inherit",
+      },
+    );
+
+    child.on("exit", (code, signal) => {
+      resolve({ code, signal });
+    });
+  });
+}
+
 const { values } = parseArgs({
   options: {
     model: { type: "string", short: "m" },
     "timeout-ms": { type: "string", short: "t" },
     suite: { type: "string", short: "s" },
+    trials: { type: "string", short: "k" },
   },
   allowPositionals: true,
 });
@@ -116,6 +165,17 @@ if (timeoutFromFlag !== undefined) {
   parsePositiveMs(env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS, "LOCALLAB_LIVE_EVAL_TIMEOUT_MS");
 }
 
+const trialsFromFlag = parsePositiveInt(values.trials, "--trials");
+if (trialsFromFlag !== undefined) {
+  env.LOCALLAB_LIVE_EVAL_TRIALS = String(trialsFromFlag);
+} else if (!String(env.LOCALLAB_LIVE_EVAL_TRIALS ?? "").trim()) {
+  env.LOCALLAB_LIVE_EVAL_TRIALS = String(DEFAULT_TRIALS);
+} else {
+  parsePositiveInt(env.LOCALLAB_LIVE_EVAL_TRIALS, "LOCALLAB_LIVE_EVAL_TRIALS");
+}
+
+const trials = parsePositiveInt(env.LOCALLAB_LIVE_EVAL_TRIALS, "LOCALLAB_LIVE_EVAL_TRIALS");
+
 if (!String(env.OLLAMA_MODEL ?? "").trim()) {
   console.error(
     "OLLAMA_MODEL is required for live evals.\n" +
@@ -126,31 +186,50 @@ if (!String(env.OLLAMA_MODEL ?? "").trim()) {
 }
 
 const suiteFiles = resolveSuiteFiles(values.suite);
+const suiteLabel = values.suite ?? "all";
 
 console.log(
-  `[live-eval] suite=${values.suite ?? "all"} model=${env.OLLAMA_MODEL} timeoutMs=${env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS}`,
+  `[live-eval] suite=${suiteLabel} model=${env.OLLAMA_MODEL} timeoutMs=${env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS} trials=${trials}`,
 );
 
-const child = spawn(
-  process.execPath,
-  [
-    path.join(root, "node_modules/vitest/vitest.mjs"),
-    "run",
-    "--config",
-    "vitest.live.config.ts",
-    ...suiteFiles,
-  ],
-  {
-    cwd: root,
-    env,
-    stdio: "inherit",
-  },
-);
+/** @type {boolean[]} */
+const trialPassed = [];
 
-child.on("exit", (code, signal) => {
+for (let i = 1; i <= trials; i++) {
+  if (trials > 1) {
+    console.log(`[live-eval] trial ${i}/${trials} begin suite=${suiteLabel}`);
+  }
+
+  const { code, signal } = await runVitestOnce(env, suiteFiles);
+
   if (signal) {
     process.kill(process.pid, signal);
-    return;
+    // Wait for the signal to terminate this process.
+    await new Promise(() => {});
   }
-  process.exit(code ?? 1);
-});
+
+  const ok = code === 0;
+  trialPassed.push(ok);
+
+  if (trials > 1) {
+    console.log(
+      `[live-eval] trial ${i}/${trials} end suite=${suiteLabel} result=${ok ? "pass" : "fail"}`,
+    );
+  }
+
+  if (!ok) {
+    const passedCount = trialPassed.filter(Boolean).length;
+    console.error(
+      `[live-eval] pass^${trials} failed: suite=${suiteLabel} stopped after trial ${i}/${trials} (${passedCount}/${i} trials passed so far)`,
+    );
+    process.exit(code ?? 1);
+  }
+}
+
+if (trials > 1) {
+  console.log(
+    `[live-eval] pass^${trials} cleared: suite=${suiteLabel} model=${env.OLLAMA_MODEL} (${trials}/${trials} trials passed)`,
+  );
+}
+
+process.exit(0);

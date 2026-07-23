@@ -59,9 +59,10 @@ Panel and trend Level 1 live scoring hit your local Ollama model and are **not**
 npm run test:live-eval -- --suite panel --model gemma4:26b
 npm run test:live-eval -- --suite trend --model gemma4:26b
 npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
+npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
 ```
 
-On failure, the suite logs failing assertion ids and the raw model answer for each case.
+On failure, the suite logs failing assertion ids and the raw model answer for each case. `--trials` / `-k` (or `LOCALLAB_LIVE_EVAL_TRIALS`) repeats the full suite for pass^k; default is `1` (baselines / compares). Ship gate uses `3`.
 
 ### Baselines and model comparisons
 
@@ -70,11 +71,16 @@ On failure, the suite logs failing assertion ids and the raw model answer for ea
 
 Both report dirs are gitignored by default; force-add only when committing a decision record.
 
-### Ship gate (dual suite)
+### Ship gate (dual suite, pass^k)
 
-Before merging a chat default, prompt/guidance, or production-harness change: both Level 1 suites must pass separately on the exact production Ollama tag (`npm run test:live-eval -- --suite panel` then `--suite trend`); do not average scores, skip a suite, or ship on a single lucky green — triage true fail vs grader FP vs flake first, and prefer pass^k over pass@1.
+Do not ship a LocalLab chat model default or prompt change unless panel Level 1 and trend Level 1 both clear pass^k (start k = 3) on that exact model tag.
 
-Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OLLAMA_MODEL` (local default: `gemma4:26b-mlx`); document any one-line override in the PR.
+```bash
+npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
+npm run test:live-eval -- --suite trend --model gemma4:26b-mlx --trials 3
+```
+
+Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OLLAMA_MODEL` (local default: `gemma4:26b-mlx`); document any one-line override in the PR. Do not average suites, skip a suite, or ship on pass@1 folklore.
 
 ## Configuration
 
@@ -85,6 +91,7 @@ Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OL
 | `OLLAMA_MODEL` | — | Model for live evals (`npm run test:live-eval`); override with `--model` |
 | `LOCALLAB_LIVE_EVAL` | `0` | Keep `0` for normal use; `test:live-eval` sets this to `1` |
 | `LOCALLAB_LIVE_EVAL_TIMEOUT_MS` | `900000` | Per-case live-eval timeout in ms; override with `--timeout-ms` |
+| `LOCALLAB_LIVE_EVAL_TRIALS` | `1` | Independent full-suite repeats for pass^k; override with `--trials` / `-k` (ship gate: `3`) |
 | `PORT` | `3001` | Express API port |
 
 Choose a model from the web UI before uploading or generating insights.
