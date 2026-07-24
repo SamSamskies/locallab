@@ -24,10 +24,10 @@ Capture one Level 1 live-eval run (one suite, one model) as a markdown baseline 
 
 ### Suites
 
-| Suite | Flag | Cases (always 3) |
+| Suite | Flag | Cases |
 | :--- | :--- | :--- |
-| panel | `--suite panel` | `glucose-high`, `all-normal-cbc`, `elevated-tsh-leading` |
-| trend | `--suite trend` | `ldl-rising`, `triglycerides-falling`, `cholesterol-leading` |
+| panel | `--suite panel` | `glucose-high`, `all-normal-cbc`, `elevated-tsh-leading` (3) |
+| trend | `--suite trend` | `ldl-rising`, `triglycerides-falling`, `cholesterol-leading`, `hdl-stable` (4) |
 | all | (two passes) | panel cases, then trend cases — two report files |
 
 ## Prerequisites
@@ -105,8 +105,8 @@ Report seconds to one decimal (`18.0 s`). If a case never finished, omit wall ti
 
 Rules:
 
-- **Pass rate**: `passed / 3 cases` (Level 1 total is always 3)
-- **Failing assertion ids**: from the summary; `none` when `3 / 3`
+- **Pass rate**: `passed / <N> cases` where N is the suite case count (panel 3, trend 4)
+- **Failing assertion ids**: from the summary; `none` when all cases pass
 - **Model responses**: every completed case between begin/end markers (pass and fail); do not invent or truncate
 - **Suite wall-clock**: seconds around the `npm run test:live-eval` invocation
 
@@ -145,7 +145,7 @@ Report body (five-backtick outer fence so inner four-backtick answer fences stay
 
 Model: <model>
 
-Pass rate: <n> / 3 cases
+Pass rate: <n> / <N> cases
 
 Failing assertion ids: <ids or none>
 

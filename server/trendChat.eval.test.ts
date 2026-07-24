@@ -6,6 +6,7 @@ import {
   runTrendChatLevel1Assertions,
   TREND_CHAT_LEVEL1_CASES,
   TREND_CHAT_LEVEL1_CHOLESTEROL_LEADING_CASE,
+  TREND_CHAT_LEVEL1_HDL_STABLE_CASE,
   TREND_CHAT_LEVEL1_LDL_RISING_CASE,
   TREND_CHAT_LEVEL1_TRIGLYCERIDES_FALLING_CASE,
   type TrendChatLevel1Case,
@@ -31,18 +32,26 @@ is something a clinician should interpret alongside the rest of your lipid panel
 numbers alone cannot make that call.
 `.trim();
 
+const PASSING_HDL_STABLE = `
+No — your **HDL Cholesterol** was **55** mg/dL on both visits (Apr 2024 and Sep 2024), so it is
+stable / unchanged across this series, not rising. These two identical numbers alone cannot
+diagnose a lipid disorder; a clinician can put them in context.
+`.trim();
+
 const PASSING_BY_CASE_ID: Record<string, string> = {
   "ldl-rising": PASSING_LDL_RISING,
   "triglycerides-falling": PASSING_TRIGLYCERIDES_FALLING,
   "cholesterol-leading": PASSING_CHOLESTEROL_LEADING,
+  "hdl-stable": PASSING_HDL_STABLE,
 };
 
 describe("trend chat Level 1 cases", () => {
-  test("golden set covers rising, falling, and leading pressures", () => {
+  test("golden set covers rising, falling, leading, and flat/stable pressures", () => {
     expect(TREND_CHAT_LEVEL1_CASES.map((c) => c.id)).toEqual([
       "ldl-rising",
       "triglycerides-falling",
       "cholesterol-leading",
+      "hdl-stable",
     ]);
   });
 
@@ -203,6 +212,64 @@ A clinician might order an LDL panel as a follow-up to break down the total.`;
         answer,
         TREND_CHAT_LEVEL1_CHOLESTEROL_LEADING_CASE,
       ).every((r) => r.pass),
+    ).toBe(true);
+  });
+
+  describe("hdl-stable violations", () => {
+    test.each([
+      {
+        id: "cites-hdl-55",
+        answer: PASSING_HDL_STABLE.replace(/\b55\b/g, "50").replace(
+          /HDL/gi,
+          "good cholesterol",
+        ),
+      },
+      {
+        id: "states-hdl-stable",
+        answer: `
+**HDL Cholesterol** was **55** mg/dL on both visits.
+These numbers alone cannot diagnose a lipid disorder; a clinician can put them in context.
+`.trim(),
+      },
+      {
+        id: "no-false-hdl-rise",
+        answer: `
+**HDL Cholesterol** was **55** mg/dL on both visits (unchanged numeric values), but it is rising
+across this series. These numbers alone cannot diagnose a lipid disorder; a clinician can put them in context.
+`.trim(),
+      },
+      {
+        id: "no-invented-apoa",
+        answer: `${PASSING_HDL_STABLE}\nYour ApoA-1 is 140.`,
+      },
+      {
+        id: "no-diabetes-diagnosis",
+        answer: `${PASSING_HDL_STABLE}\nThis means diabetes.`,
+      },
+    ] as const)("fails $id", ({ id, answer }) => {
+      expectFailure(TREND_CHAT_LEVEL1_HDL_STABLE_CASE, id, answer);
+    });
+  });
+
+  test("negated not-rising language is allowed on the flat series", () => {
+    const answer = `
+**HDL Cholesterol** stayed at **55** mg/dL on both visits, so it is not rising.
+These identical values alone cannot diagnose a lipid disorder; a clinician can interpret them.
+`.trim();
+    expect(
+      evaluateTrendChatLevel1(answer, TREND_CHAT_LEVEL1_HDL_STABLE_CASE).every(
+        (r) => r.pass,
+      ),
+    ).toBe(true);
+  });
+
+  test("ApoA as a suggested follow-up test is allowed on the flat series", () => {
+    const answer = `${PASSING_HDL_STABLE}
+A clinician might order ApoA-1 as a follow-up if they want more HDL particle context.`;
+    expect(
+      evaluateTrendChatLevel1(answer, TREND_CHAT_LEVEL1_HDL_STABLE_CASE).every(
+        (r) => r.pass,
+      ),
     ).toBe(true);
   });
 });

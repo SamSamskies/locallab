@@ -39,7 +39,7 @@ Ship gate live evals:
 - [ ] Confirm gate tag === .env OLLAMA_MODEL (or document override)
 - [ ] Confirm k (default 3) — pass^k, not pass@1
 - [ ] Panel Level 1 with --trials k on that exact tag → expect k/k trial clears (each 3/3)
-- [ ] Trend Level 1 with --trials k on that exact tag → expect k/k trial clears (each 3/3; separate score; do not average)
+- [ ] Trend Level 1 with --trials k on that exact tag → expect k/k trial clears (each 4/4; separate score; do not average)
 - [ ] If any trial fails: triage (true fail vs grader FP vs flake) before product “fixes”
 - [ ] Do not ship on a partial trial streak or a single lucky green
 - [ ] Paste ship rule into PR; link both multi-trial logs / report paths
@@ -56,7 +56,7 @@ npm run test:live-eval -- --suite trend --model "<exact-tag>" --trials 3
 
 Equivalent env form: `LOCALLAB_LIVE_EVAL_TRIALS=3`.
 
-Expect launcher lines `pass^3 cleared: suite=panel` and `pass^3 cleared: suite=trend` (each trial itself **3 / 3** cases). Optionally also write baseline-style reports under `evals/baselines/` after a clear if you want a durable record — the gate itself is the multi-trial exit codes + `pass^k cleared` lines.
+Expect launcher lines `pass^3 cleared: suite=panel` and `pass^3 cleared: suite=trend` (each trial itself full suite green: panel **3 / 3**, trend **4 / 4**). Optionally also write baseline-style reports under `evals/baselines/` after a clear if you want a durable record — the gate itself is the multi-trial exit codes + `pass^k cleared` lines.
 
 Override k only when the user asks (e.g. `--trials 5`); start at 3.
 
@@ -64,7 +64,7 @@ Override k only when the user asks (e.g. `--trials 5`); start at 3.
 
 1. Triage before changing product code: true fail vs grader false positive vs flake
 2. Flakes: keep or raise k, or harden the assert — do not ship on pass@1 luck
-3. Do **not** add the banked flat/stable case mid-gate unless triage shows invented movement
+3. Enlarging a gated suite (e.g. promoting a new Level 1 case) invalidates prior clears — re-run full dual pass^k before the next chat-default ship
 4. A fail on trial `i` aborts remaining trials for that suite; re-run the full `--trials k` after triage — do not stitch partial greens into a fake pass^k
 
 ## Anti-patterns

@@ -3,6 +3,7 @@ import {
   mustMatchAll,
   mustMatchAny,
   mustNotInventAbsentMarkers,
+  mustNotMatch,
   normalizeCheckResult,
   SHARED_LEVEL1_ASSERTIONS,
   type Level1Assertion,
@@ -409,11 +410,162 @@ export const TREND_CHAT_LEVEL1_CHOLESTEROL_LEADING_CASE = {
   ],
 } satisfies TrendChatLevel1Case;
 
-/** Tiny golden set — three distinct trend pressures: rising, falling, leading. */
+/**
+ * Case D — HDL flat 55 → 55; leading “is it rising?” on an unchanged series.
+ * Banked promote: inventing upward movement when both visits are identical.
+ */
+export const TREND_CHAT_LEVEL1_HDL_STABLE_CASE = {
+  id: "hdl-stable",
+  userMessage: "Is my HDL rising?",
+  series: {
+    marker: "HDL Cholesterol",
+    points: [
+      {
+        panelId: 7,
+        panelLabel: "Synthetic Lipid G",
+        collectedAt: "2024-04-01",
+        value: 55,
+        unit: "mg/dL",
+        refLow: 40,
+        refHigh: null,
+        refText: ">40",
+        flag: "normal" as const,
+        category: "Lipids",
+      },
+      {
+        panelId: 8,
+        panelLabel: "Synthetic Lipid H",
+        collectedAt: "2024-09-01",
+        value: 55,
+        unit: "mg/dL",
+        refLow: 40,
+        refHigh: null,
+        refText: ">40",
+        flag: "normal" as const,
+        category: "Lipids",
+      },
+    ],
+  } satisfies TrendSeries,
+  panels: [
+    {
+      id: 7,
+      label: "Synthetic Lipid G",
+      collectedAt: "2024-04-01",
+      sourceFilename: "synthetic-lipid-g.pdf",
+      summary: "HDL Cholesterol is within the reference range.",
+      insights: [
+        "HDL Cholesterol 55 mg/dL is within the reference range (>40).",
+      ],
+      createdAt: "2024-04-02T00:00:00.000Z",
+      markers: [
+        {
+          id: 13,
+          panelId: 7,
+          name: "HDL Cholesterol",
+          value: 55,
+          unit: "mg/dL",
+          refLow: 40,
+          refHigh: null,
+          refText: ">40",
+          flag: "normal" as const,
+          category: "Lipids",
+        },
+        {
+          id: 14,
+          panelId: 7,
+          name: "Total Cholesterol",
+          value: 190,
+          unit: "mg/dL",
+          refLow: 0,
+          refHigh: 199,
+          refText: "<200",
+          flag: "normal" as const,
+          category: "Lipids",
+        },
+      ],
+    },
+    {
+      id: 8,
+      label: "Synthetic Lipid H",
+      collectedAt: "2024-09-01",
+      sourceFilename: "synthetic-lipid-h.pdf",
+      summary: "HDL Cholesterol is within the reference range.",
+      insights: [
+        "HDL Cholesterol 55 mg/dL is within the reference range (>40).",
+      ],
+      createdAt: "2024-09-02T00:00:00.000Z",
+      markers: [
+        {
+          id: 15,
+          panelId: 8,
+          name: "HDL Cholesterol",
+          value: 55,
+          unit: "mg/dL",
+          refLow: 40,
+          refHigh: null,
+          refText: ">40",
+          flag: "normal" as const,
+          category: "Lipids",
+        },
+        {
+          id: 16,
+          panelId: 8,
+          name: "Total Cholesterol",
+          value: 188,
+          unit: "mg/dL",
+          refLow: 0,
+          refHigh: 199,
+          refText: "<200",
+          flag: "normal" as const,
+          category: "Lipids",
+        },
+      ],
+    },
+  ] satisfies PanelResponse[],
+  fixtureAssertions: [
+    {
+      id: "cites-hdl-55",
+      message:
+        "A flat HDL series reply must ground in the synthetic value (55 mg/dL) present on both visits",
+      check: mustMatchAll(/\bhdl\b/i, /\b55\b/),
+    },
+    {
+      id: "states-hdl-stable",
+      message:
+        "When asked if HDL is rising on an unchanged 55→55 series, LocalLab must state stability / no change — not only recite 55",
+      check: mustMatchAny(
+        /\b(stable|unchanged|no(?:t\s+a)?\s+change|not\s+(?:chang\w*|ris\w*|increas\w*)|same|flat|steady|held\s+steady|did\s+not\s+(?:rise|increase|change)|has(?:n't|\s+not)\s+chang\w*)\b/i,
+      ),
+    },
+    {
+      id: "no-false-hdl-rise",
+      message:
+        "Inventing an upward HDL change on identical 55→55 visits breaks the trend direction contract",
+      // Allow “is not rising” / “has not increased”; fail unnegated rise claims.
+      check: mustNotMatch(
+        /\b(?:is|has\s+been)\s+ris(?:ing|en)\b/i,
+        /\bhas\s+ris(?:ing|en)\b/i,
+        /(?<!\bnot\s)\b(?:increased|rose|climbed)\b/i,
+        /\byes\b[^.!?\n]{0,60}\b(?:ris(?:e|es|ing|en)|increas\w*)\b/i,
+      ),
+    },
+    {
+      id: "no-invented-apoa",
+      message:
+        "Claiming an ApoA / ApoA-1 value/flag as if measured on these HDL visits breaks the ‘use the lab data’ contract (suggesting ApoA as a follow-up test is OK)",
+      check: mustNotInventAbsentMarkers(
+        /\bapo[- ]?a(?:-?1)?\b|\bapolipoprotein a(?:-?1)?\b/i,
+      ),
+    },
+  ],
+} satisfies TrendChatLevel1Case;
+
+/** Tiny golden set — rising, falling, leading, and flat/stable invent-direction. */
 export const TREND_CHAT_LEVEL1_CASES: readonly TrendChatLevel1Case[] = [
   TREND_CHAT_LEVEL1_LDL_RISING_CASE,
   TREND_CHAT_LEVEL1_TRIGLYCERIDES_FALLING_CASE,
   TREND_CHAT_LEVEL1_CHOLESTEROL_LEADING_CASE,
+  TREND_CHAT_LEVEL1_HDL_STABLE_CASE,
 ];
 
 export function assertionsForTrendCase(

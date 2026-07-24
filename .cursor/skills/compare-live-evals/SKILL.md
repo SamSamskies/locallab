@@ -19,15 +19,15 @@ Run the same Level 1 live assertions against each named model and record results
 - **Never** pass launcher default `all` as a single blended run — if the user wants both, run panel then trend as separate suite passes and write separate reports (or one file with two top-level suite sections)
 - **Do not** run higher levels, unit tests, or change assertion code for a comparison run
 - **Do not** write single-model baselines here — use `baseline-live-evals` → `evals/baselines/`
-- **3 cases** per suite run
+- Case count follows the suite golden set (panel 3, trend 4)
 - **Prompt**: production chat guidance only (no prompt-variant flag). If the user asks to A/B prompts, say variants are not wired—compare models, or add a new variant first.
 
 ### Suites
 
-| Suite | Flag | Cases (always 3) | Default? |
+| Suite | Flag | Cases | Default? |
 | :--- | :--- | :--- | :--- |
-| panel | `--suite panel` | `glucose-high`, `all-normal-cbc`, `elevated-tsh-leading` | yes (when suite omitted) |
-| trend | `--suite trend` | `ldl-rising`, `triglycerides-falling`, `cholesterol-leading` | no |
+| panel | `--suite panel` | `glucose-high`, `all-normal-cbc`, `elevated-tsh-leading` (3) | yes (when suite omitted) |
+| trend | `--suite trend` | `ldl-rising`, `triglycerides-falling`, `cholesterol-leading`, `hdl-stable` (4) | no |
 
 ## Prerequisites
 
@@ -108,8 +108,8 @@ Also note the launcher line: `[live-eval] suite=... model=... timeoutMs=...`
 
 Rules:
 
-- **Pass rate**: use `passed / 3 cases` (total is always 3 for Level 1). If the summary line is missing, count passed vs failed from per-case lines / vitest results; still report over 3.
-- **Failing assertion ids**: copy assertion ids from the summary. If a case failed with multiple ids, include them all. Format as a comma-separated list, optionally prefixed with case id (`glucose-high: mentions-glucose-108` or `ldl-rising: cites-ldl-95-and-110`). Use `none` when pass rate is `3 / 3`.
+- **Pass rate**: use `passed / <N> cases` (panel N=3, trend N=4). If the summary line is missing, count passed vs failed from per-case lines / vitest results; still report over the suite case count.
+- **Failing assertion ids**: copy assertion ids from the summary. If a case failed with multiple ids, include them all. Format as a comma-separated list, optionally prefixed with case id (`glucose-high: mentions-glucose-108` or `ldl-rising: cites-ldl-95-and-110`). Use `none` when all cases pass.
 - **Model responses**: for **every completed case**, extract the text between `raw answer begin case=<id>` and `raw answer end case=<id>` (inclusive markers not copied). Include **all** cases (pass and fail) — failing assertion ids alone are not enough for grader triage. If a case never finished, omit it and note the error in the decision sentence.
 - **Suite wall-clock**: seconds from the timer around that run's `npm run test:live-eval` invocation (not per-case timeout).
 - If Ollama/model errors prevent any cases from finishing, still write a card: pass rate `0 / 3` (or however many completed), list what failed, and note the error in the decision sentence.
@@ -156,7 +156,7 @@ Report body (example uses five-backtick outer fence so inner four-backtick answe
 
 Model: <model>
 
-Pass rate: <n> / 3 cases
+Pass rate: <n> / <N> cases
 
 Failing assertion ids: <ids or none>
 
