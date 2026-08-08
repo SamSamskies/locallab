@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ChatContextType, ChatConversation, ChatMessage } from "@shared/schema";
 import {
   deleteConversation,
@@ -22,6 +23,7 @@ function conversationLabel(conversation: ChatConversation): string {
 
 export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
   const [open, setOpen] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selectedId, setSelectedId] = useState<number | typeof DRAFT_ID>(DRAFT_ID);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -118,6 +120,32 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages, streamingContent, thinkingText, scrollToBottom]);
+
+  useEffect(() => {
+    if (!expanded) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setExpanded(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [expanded]);
+
+  const handleToggleOpen = () => {
+    setOpen((prev) => {
+      if (prev) setExpanded(false);
+      return !prev;
+    });
+  };
 
   const handleNewChat = () => {
     streamRef.current?.abort();
@@ -224,17 +252,52 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
     }
   };
 
-  return (
-    <div className="chat-panel">
-      <button
-        type="button"
-        className="chat-panel-toggle"
-        aria-expanded={open}
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        <span>{title}</span>
-        <span className="chat-panel-toggle-icon">{open ? "−" : "+"}</span>
-      </button>
+  const panel = (
+    <div
+      className={`chat-panel${expanded ? " chat-panel-expanded" : ""}`}
+      role={expanded ? "dialog" : undefined}
+      aria-modal={expanded ? true : undefined}
+      aria-label={expanded ? title : undefined}
+    >
+      <div className="chat-panel-header">
+        <button
+          type="button"
+          className="chat-panel-toggle"
+          aria-expanded={open}
+          onClick={expanded ? () => setExpanded(false) : handleToggleOpen}
+        >
+          <span>{title}</span>
+        </button>
+        <div className="chat-panel-header-actions">
+          {!expanded && (
+            <button
+              type="button"
+              className="chat-panel-icon-btn"
+              aria-label={open ? "Minimize chat" : "Open chat"}
+              title={open ? "Minimize chat" : "Open chat"}
+              onClick={handleToggleOpen}
+            >
+              <span className="chat-panel-toggle-icon" aria-hidden="true">
+                {open ? "−" : "+"}
+              </span>
+            </button>
+          )}
+          {open && (
+            <button
+              type="button"
+              className="chat-panel-icon-btn"
+              aria-label={expanded ? "Close expanded chat" : "Expand chat"}
+              aria-pressed={expanded}
+              title={expanded ? "Close expanded chat" : "Expand chat"}
+              onClick={() => setExpanded((prev) => !prev)}
+            >
+              <span className="chat-panel-toggle-icon" aria-hidden="true">
+                {expanded ? "⤡" : "⤢"}
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
 
       {open && (
         <div className="chat-panel-body">
@@ -340,4 +403,31 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
       )}
     </div>
   );
+
+  if (expanded) {
+    return (
+      <>
+        <div className="chat-panel chat-panel-placeholder" aria-hidden="true">
+          <div className="chat-panel-header">
+            <span className="chat-panel-toggle">{title}</span>
+          </div>
+        </div>
+        {createPortal(
+          <div
+            className="chat-panel-overlay"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setExpanded(false);
+              }
+            }}
+          >
+            {panel}
+          </div>,
+          document.body,
+        )}
+      </>
+    );
+  }
+
+  return panel;
 }

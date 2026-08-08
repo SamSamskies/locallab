@@ -937,12 +937,51 @@ h3 {
   overflow: hidden;
 }
 
+.chat-panel-placeholder {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.chat-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.chat-panel-expanded {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 52rem);
+  height: 100%;
+  max-height: 100dvh;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  box-shadow: 0 0 48px color-mix(in srgb, var(--text-primary) 16%, transparent);
+  animation: fadeUp 160ms ease both;
+}
+
+.chat-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-right: 0.45rem;
+  flex-shrink: 0;
+}
+
 .chat-panel-toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 0.9rem 1.1rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.9rem 0.65rem 0.9rem 1.1rem;
   border: none;
   background: transparent;
   color: var(--text-primary);
@@ -950,15 +989,51 @@ h3 {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
+  text-align: left;
 }
 
-.chat-panel-toggle:hover {
+.chat-panel-toggle:hover,
+.chat-panel-header:hover .chat-panel-toggle {
+  background: transparent;
+}
+
+.chat-panel-header:hover {
   background: var(--bg-hover);
 }
 
-.chat-panel-toggle-icon {
+.chat-panel-expanded .chat-panel-header:hover {
+  background: transparent;
+}
+
+.chat-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.chat-panel-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text-muted);
-  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.chat-panel-icon-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.chat-panel-toggle-icon {
+  color: inherit;
+  font-size: 1.15rem;
   line-height: 1;
 }
 
@@ -970,11 +1045,18 @@ h3 {
   border-top: 1px solid var(--border);
 }
 
+.chat-panel-expanded .chat-panel-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 1.25rem 1.25rem;
+}
+
 .chat-toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   padding-top: 0.85rem;
+  flex-shrink: 0;
 }
 
 .chat-conversation-select {
@@ -993,6 +1075,12 @@ h3 {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
+}
+
+.chat-panel-expanded .chat-messages {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
 }
 
 .chat-loading {
@@ -1036,6 +1124,7 @@ h3 {
   display: flex;
   gap: 0.65rem;
   align-items: flex-end;
+  flex-shrink: 0;
 }
 
 .chat-input {
