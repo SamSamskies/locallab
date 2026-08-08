@@ -404,30 +404,24 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
     </div>
   );
 
-  if (expanded) {
-    return (
-      <>
+  return (
+    <>
+      {expanded && (
         <div className="chat-panel chat-panel-placeholder" aria-hidden="true">
           <div className="chat-panel-header">
             <span className="chat-panel-toggle">{title}</span>
           </div>
         </div>
-        {createPortal(
+      )}
+      {expanded &&
+        createPortal(
           <div
             className="chat-panel-overlay"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) {
-                setExpanded(false);
-              }
-            }}
-          >
-            {panel}
-          </div>,
+            onMouseDown={() => setExpanded(false)}
+          />,
           document.body,
         )}
-      </>
-    );
-  }
-
-  return panel;
+      {panel}
+    </>
+  );
 }
