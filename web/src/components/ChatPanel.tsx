@@ -36,12 +36,13 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
   );
 }
 
-/** Mark siblings along the path from `dialog` up to `root` as inert so background can't take focus. */
+/** Mark siblings along the path from `dialog` up through `#root` as inert so background can't take focus.
+ * Stops before `document.body` so portaled body siblings (e.g. the dismiss overlay) stay interactive. */
 function setBackgroundInert(dialog: HTMLElement, enabled: boolean) {
   let node: HTMLElement | null = dialog;
   while (node && node !== document.body) {
     const parent: HTMLElement | null = node.parentElement;
-    if (!parent) break;
+    if (!parent || parent === document.body) break;
     for (const sibling of parent.children) {
       if (sibling === node || !(sibling instanceof HTMLElement)) continue;
       sibling.inert = enabled;
