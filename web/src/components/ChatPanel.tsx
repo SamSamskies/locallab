@@ -417,7 +417,7 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
         createPortal(
           <div
             className="chat-panel-overlay"
-            onMouseDown={() => setExpanded(false)}
+            onClick={() => setExpanded(false)}
           />,
           document.body,
         )}
