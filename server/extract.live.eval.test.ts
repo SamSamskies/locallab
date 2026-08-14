@@ -49,7 +49,7 @@ function resolveLiveEvalThink(): boolean | undefined {
 }
 
 function failingIdForExtractError(err: unknown): string {
-  if (err instanceof Error && err.name === "ZodError") return "schema-valid";
+  if (err instanceof Error && err.name === "ZodError") return "schema-invalid";
   if (err instanceof SyntaxError) return "json-parse";
   return "extract-error";
 }
