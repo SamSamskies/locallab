@@ -74,16 +74,21 @@ On failure, the suite logs failing assertion ids and the raw model answer for ea
 
 Both report dirs are gitignored by default; force-add only when committing a decision record.
 
-### Ship gate (dual suite, pass^k)
+### Ship gate (pass^k)
 
-Do not ship a LocalLab chat model default or prompt change unless panel Level 1 and trend Level 1 both clear pass^k (start k = 3) on that exact model tag. Extraction is a separate `--suite extract` and is not part of this chat ship gate yet.
+Chat and extract are **separate** rituals. Do not average them or require one because the other is in the PR.
+
+Do not ship a LocalLab chat model default or prompt change unless panel Level 1 and trend Level 1 both clear pass^k (start k = 3) on that exact model tag.
+
+Do not ship an extraction prompt or JSON harness change (including `think` / temperature / `format`) unless extract Level 1 clears pass^k (start k = 3) on that exact model tag.
 
 ```bash
 npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
 npm run test:live-eval -- --suite trend --model gemma4:26b-mlx --trials 3
+npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --trials 3
 ```
 
-Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OLLAMA_MODEL` (local default: `gemma4:26b-mlx`); document any one-line override in the PR. Do not average suites, skip a suite, or ship on pass@1 folklore.
+Extract gate runs must omit `--think` / `--temperature` so they match production (`think: false`, temperature unset). Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OLLAMA_MODEL` (local default: `gemma4:26b-mlx`); document any one-line override in the PR. Do not average suites, skip a gated suite, or ship on pass@1 folklore.
 
 ## Configuration
 
