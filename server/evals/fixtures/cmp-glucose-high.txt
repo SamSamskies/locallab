@@ -1,0 +1,30 @@
+LABCORP
+Patient Name: SAMPLE, ANON
+Date of Birth: 01/15/1980
+Sex: M
+Account: 000000
+
+Specimen: Blood
+Date Collected: 06/01/2024
+Date Reported: 06/02/2024
+
+Comprehensive Metabolic Panel
+
+Test                   Result  Flag  Units    Reference Interval
+Glucose                108     H     mg/dL    70-99
+BUN                     14           mg/dL    7-25
+Creatinine             0.90          mg/dL    0.60-1.20
+eGFR                    95           mL/min   >60
+Sodium                 140           mmol/L   135-146
+Potassium                4.2         mmol/L   3.5-5.3
+Chloride               102           mmol/L   98-110
+Carbon Dioxide          25           mmol/L   20-32
+Calcium                  9.4         mg/dL    8.6-10.3
+Protein, Total           7.1         g/dL     6.1-8.1
+Albumin                  4.4         g/dL     3.6-5.1
+Globulin                 2.7         g/dL     1.9-3.7
+A/G Ratio                1.6                  1.0-2.5
+Bilirubin, Total         0.6         mg/dL    0.2-1.2
+Alkaline Phosphatase    68           IU/L     40-129
+AST (SGOT)              22           IU/L     10-40
+ALT (SGPT)              25           IU/L     9-46

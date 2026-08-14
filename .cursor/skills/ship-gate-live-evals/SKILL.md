@@ -24,6 +24,8 @@ Use this gate when you would:
 
 > Do not ship a LocalLab chat model default or prompt change unless panel Level 1 and trend Level 1 both clear pass^k (start k = 3) on that exact model tag.
 
+Extraction (`--suite extract`) is a sibling live-eval path for PDF → JSON. It is **not** part of this chat ship gate yet; run it when changing the extraction prompt or JSON harness (including temperature and `think`).
+
 ## Prerequisites
 
 - Ollama up; model tag already pulled

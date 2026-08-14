@@ -2,11 +2,11 @@
 name: baseline-live-evals
 description: >-
   Run a single-model Level 1 live eval baseline via npm run test:live-eval
-  (--suite panel|trend|all), then write triage report(s) under evals/baselines/
+  (--suite panel|trend|extract|all), then write triage report(s) under evals/baselines/
   with pass rate, per-case wall time, and full transcripts. Use when the user
   asks for a live-eval baseline, first-pass scoring on one model, or to record
-  a reference run (e.g. "baseline trend on gemma4:26b" or "baseline all on
-  gemma4:26b-mlx").
+  a reference run (e.g. "baseline trend on gemma4:26b", "baseline extract on
+  gemma4:26b-mlx", or "baseline all on gemma4:26b-mlx").
 ---
 
 # Baseline Live Evals
@@ -15,12 +15,14 @@ Capture one Level 1 live-eval run (one suite, one model) as a markdown baseline 
 
 ## Scope
 
-- **One suite per report**: `panel` or `trend` (require an explicit `--suite` on each vitest invocation; never pass launcher `all` as one blended process)
+- **One suite per report**: `panel`, `trend`, or `extract` (require an explicit `--suite` on each vitest invocation; never pass launcher `all` as one blended process)
 - **One model** per report
-- When the user asks for suite `all`: run panel then trend as **two separate** suite passes and write **two** reports — never one blended pass rate
+- When the user asks for suite `all`: run panel then trend as **two separate** suite passes and write **two** reports — never one blended pass rate. `all` does **not** include extract.
 - **Do not** run multi-model A/B here — use `compare-live-evals` (writes to `evals/comparisons/`)
 - **Do not** change assertion code or fixtures to make the model pass
-- **Prompt**: production chat guidance only
+- **Prompt**: production path only (chat guidance for panel/trend; `extractFromPdfText` / extraction prompt for extract)
+- **Temperature**: omit `--temperature` on extract baselines unless the user asks for a specific value (production extraction does not set temperature)
+- **Think**: omit `--think` on extract baselines unless the user asks (production extraction sets `think: false`; use `--think true` to A/B against thinking on)
 
 ### Suites
 
@@ -28,7 +30,8 @@ Capture one Level 1 live-eval run (one suite, one model) as a markdown baseline 
 | :--- | :--- | :--- |
 | panel | `--suite panel` | `glucose-high`, `all-normal-cbc`, `elevated-tsh-leading` (3) |
 | trend | `--suite trend` | `ldl-rising`, `triglycerides-falling`, `cholesterol-leading`, `hdl-stable` (4) |
-| all | (two passes) | panel cases, then trend cases — two report files |
+| extract | `--suite extract` | `cmp-glucose-high`, `cbc-all-normal` (2) |
+| all | (two passes) | panel cases, then trend cases — two report files (chat only) |
 
 ## Prerequisites
 
@@ -42,7 +45,7 @@ Copy and track:
 
 ```
 Baseline live eval:
-- [ ] Parse suite (panel|trend|all) and model from the user message
+- [ ] Parse suite (panel|trend|extract|all) and model from the user message
 - [ ] Confirm Level 1 only (refuse / clarify if they ask for other levels)
 - [ ] For each suite in scope: live-eval with --suite and --model; capture output + suite wall-clock
 - [ ] Parse pass rate, failing ids, per-case wall times, raw answers
@@ -58,17 +61,18 @@ Examples:
 > baseline trend on gemma4:26b  
 > baseline panel chat Level 1 with medgemma1.5:latest  
 > first trend baseline gemma4:26b-mlx  
+> baseline extract on gemma4:26b-mlx  
 > baseline all on gemma4:26b-mlx
 
-Require **suite** + **model**. If either is missing, ask. Suite `all` expands to `[panel, trend]`. If the user names two+ models, point them at `compare-live-evals` (or offer one baseline per model as separate reports).
+Require **suite** + **model**. If either is missing, ask. Suite `all` expands to `[panel, trend]` (not extract). If the user names two+ models, point them at `compare-live-evals` (or offer one baseline per model as separate reports).
 
 ### 2. Run the suite
 
-For **each** suite in scope (`panel` / `trend`, or both when `all`):
+For **each** suite in scope (`panel` / `trend` / `extract`, or panel then trend when `all`):
 
 ```bash
 START=$(date +%s)
-npm run test:live-eval -- --suite "<panel|trend>" --model "<model>" 2>&1 | tee "/tmp/locallab-live-eval-baseline-<suite>-<safe-model>.log"
+npm run test:live-eval -- --suite "<panel|trend|extract>" --model "<model>" 2>&1 | tee "/tmp/locallab-live-eval-baseline-<suite>-<safe-model>.log"
 END=$(date +%s)
 echo "SUITE_WALL_CLOCK_S=$((END - START))"
 ```
@@ -105,7 +109,7 @@ Report seconds to one decimal (`18.0 s`). If a case never finished, omit wall ti
 
 Rules:
 
-- **Pass rate**: `passed / <N> cases` where N is the suite case count (panel 3, trend 4)
+- **Pass rate**: `passed / <N> cases` where N is the suite case count (panel 3, trend 4, extract 2)
 - **Failing assertion ids**: from the summary; `none` when all cases pass
 - **Model responses**: every completed case between begin/end markers (pass and fail); do not invent or truncate
 - **Suite wall-clock**: seconds around the `npm run test:live-eval` invocation
@@ -125,7 +129,7 @@ Filename (local time when **that suite’s** report is written):
 evals/baselines/<suite>-level1-<YYYY-MM-DD>-<HHMMSS>-<model-slug>.md
 ```
 
-- **Suite prefix**: `panel` or `trend` (one suite per file)
+- **Suite prefix**: `panel`, `trend`, or `extract` (one suite per file)
 - **Timestamp**: `HHMMSS` (24h, zero-padded); when suite is `all`, stamp each file when that suite finishes
 - **Model slug**: sanitize (`:` → `-`). Example: `trend-level1-2026-07-20-084549-gemma4-26b-mlx.md`
 
@@ -133,9 +137,11 @@ Report body (five-backtick outer fence so inner four-backtick answer fences stay
 
 `````markdown
 # <Panel|Trend> chat Level 1 live eval baseline
+# (extract: "# Extraction Level 1 live eval baseline")
 
 - Date: <YYYY-MM-DD HH:MM:SS local>
 - Suite: <panel|trend> chat Level 1 (`npm run test:live-eval -- --suite <suite>`)
+  (extract: `extract` Level 1 (`npm run test:live-eval -- --suite extract`))
 - Cases: <case list for suite>
 - Model: <model>
 
@@ -194,7 +200,7 @@ Reply with:
 
 - Do not write baselines under `evals/comparisons/`
 - Do not omit `--suite` or pass launcher `all` as one vitest process (mixes panel + trend)
-- Do not blend panel and trend into one pass rate or one undivided report
+- Do not blend panel, trend, or extract into one pass rate or one undivided report
 - Do not run `npm test` / `verify` as a substitute for live eval
 - Do not invent failing assertion ids or paraphrase model responses
 - Do not omit model responses when answers were logged

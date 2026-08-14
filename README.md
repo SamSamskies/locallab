@@ -53,27 +53,30 @@ Runs TypeScript type-checking (`tsc --noEmit`) and unit tests (canned graders on
 
 ## Live evals
 
-Panel and trend Level 1 live scoring hit your local Ollama model and are **not** part of `npm test` / `npm run verify`. Requires Ollama running and `OLLAMA_MODEL` set (via `.env` or `--model`). Use `--suite panel|trend|all` (default `all`).
+Panel, trend, and extract Level 1 live scoring hit your local Ollama model and are **not** part of `npm test` / `npm run verify`. Requires Ollama running and `OLLAMA_MODEL` set (via `.env` or `--model`). Use `--suite panel|trend|extract|all` (default `all` = panel + trend; extract is opt-in).
 
 ```bash
 npm run test:live-eval -- --suite panel --model gemma4:26b
 npm run test:live-eval -- --suite trend --model gemma4:26b
+npm run test:live-eval -- --suite extract --model gemma4:26b-mlx
+npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --temperature 0
+npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --think true
 npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
 npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
 ```
 
-On failure, the suite logs failing assertion ids and the raw model answer for each case. `--trials` / `-k` (or `LOCALLAB_LIVE_EVAL_TRIALS`) repeats the full suite for pass^k; default is `1` (baselines / compares). Ship gate uses `3`.
+On failure, the suite logs failing assertion ids and the raw model answer for each case (JSON for extract). `--trials` / `-k` (or `LOCALLAB_LIVE_EVAL_TRIALS`) repeats the full suite for pass^k; default is `1` (baselines / compares). Ship gate uses `3`. `--temperature` and `--think` apply to **extract** only. Production extraction sets `think: false` and leaves temperature unset; omit the flags to match that path. Chat is unchanged.
 
 ### Baselines and model comparisons
 
-- **Baseline** (one model; suite `panel`, `trend`, or `all` → two files): ask Cursor with the `baseline-live-evals` skill, e.g. “baseline trend on gemma4:26b” or “baseline all on gemma4:26b-mlx”. Reports go to `evals/baselines/`.
+- **Baseline** (one model; suite `panel`, `trend`, `extract`, or `all` → panel + trend files): ask Cursor with the `baseline-live-evals` skill, e.g. “baseline trend on gemma4:26b”, “baseline extract on gemma4:26b-mlx”, or “baseline all on gemma4:26b-mlx”. Reports go to `evals/baselines/`.
 - **Compare** (same suite, multiple models): ask with `compare-live-evals`, e.g. “compare trend live evals against gemma4:26b and medgemma1.5:latest” (suite defaults to panel if omitted). Reports go to `evals/comparisons/`.
 
 Both report dirs are gitignored by default; force-add only when committing a decision record.
 
 ### Ship gate (dual suite, pass^k)
 
-Do not ship a LocalLab chat model default or prompt change unless panel Level 1 and trend Level 1 both clear pass^k (start k = 3) on that exact model tag.
+Do not ship a LocalLab chat model default or prompt change unless panel Level 1 and trend Level 1 both clear pass^k (start k = 3) on that exact model tag. Extraction is a separate `--suite extract` and is not part of this chat ship gate yet.
 
 ```bash
 npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
@@ -92,6 +95,8 @@ Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OL
 | `LOCALLAB_LIVE_EVAL` | `0` | Keep `0` for normal use; `test:live-eval` sets this to `1` |
 | `LOCALLAB_LIVE_EVAL_TIMEOUT_MS` | `900000` | Per-case live-eval timeout in ms; override with `--timeout-ms` |
 | `LOCALLAB_LIVE_EVAL_TRIALS` | `1` | Independent full-suite repeats for pass^k; override with `--trials` / `-k` (ship gate: `3`) |
+| `LOCALLAB_LIVE_EVAL_TEMPERATURE` | — | Ollama temperature for `--suite extract` only; override with `--temperature` (omit = unset, matching production) |
+| `LOCALLAB_LIVE_EVAL_THINK` | — | Ollama `think` for `--suite extract` only; override with `--think true` or `--think false` (omit = production `false`) |
 | `PORT` | `3001` | Express API port |
 
 Choose a model from the web UI before uploading or generating insights.

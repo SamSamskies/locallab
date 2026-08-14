@@ -36,6 +36,36 @@ export type OllamaChatMessage = {
   content: string;
 };
 
+/**
+ * Sampling / decoding extras. `temperature` maps to Ollama `options`;
+ * `think` is a top-level chat field. Omit to use the model default.
+ */
+export type OllamaChatOptions = {
+  temperature?: number;
+  think?: boolean;
+};
+
+export function buildOllamaChatRequestBody(
+  messages: OllamaChatMessage[],
+  model: string,
+  format?: "json",
+  options?: OllamaChatOptions,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model,
+    stream: true,
+    messages,
+  };
+  if (format) body.format = format;
+  if (options?.think !== undefined) {
+    body.think = options.think;
+  }
+  if (options?.temperature !== undefined) {
+    body.options = { temperature: options.temperature };
+  }
+  return body;
+}
+
 async function readOllamaStream(
   response: Response,
   onToken: (token: string, phase: StreamTokenPhase) => void,
@@ -121,16 +151,14 @@ async function chatRequest(
   messages: OllamaChatMessage[],
   model: string,
   format: "json" | undefined,
+  options?: OllamaChatOptions,
 ): Promise<Response> {
   const response = await fetch(`${getOllamaUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      stream: true,
-      ...(format ? { format } : {}),
-      messages,
-    }),
+    body: JSON.stringify(
+      buildOllamaChatRequestBody(messages, model, format, options),
+    ),
   });
 
   if (!response.ok) {
@@ -158,16 +186,40 @@ export async function chatStreaming(
   return chatMessagesStreaming([{ role: "user", content: prompt }], onToken, model);
 }
 
+/** Strip a wrapping markdown fence so `format: json` payloads still parse. */
+export function parseJsonContent<T>(content: string): T {
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const payload = (fenced?.[1] ?? trimmed).trim();
+  try {
+    return JSON.parse(payload) as T;
+  } catch (err) {
+    const preview = content.length > 500 ? `${content.slice(0, 500)}…` : content;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new SyntaxError(`${message}\n--- raw ---\n${preview}`);
+  }
+}
+
 export async function chatJsonStreaming<T>(
   prompt: string,
   onToken: (token: string, phase: StreamTokenPhase) => void,
   model: string,
+  options?: OllamaChatOptions,
 ): Promise<T> {
-  const response = await chatRequest([{ role: "user", content: prompt }], model, "json");
+  const response = await chatRequest(
+    [{ role: "user", content: prompt }],
+    model,
+    "json",
+    options,
+  );
   const content = await readOllamaStream(response, onToken, getOllamaTimeoutMs());
-  return JSON.parse(content) as T;
+  return parseJsonContent<T>(content);
 }
 
-export async function chatJson<T>(prompt: string, model: string): Promise<T> {
-  return chatJsonStreaming<T>(prompt, () => {}, model);
+export async function chatJson<T>(
+  prompt: string,
+  model: string,
+  options?: OllamaChatOptions,
+): Promise<T> {
+  return chatJsonStreaming<T>(prompt, () => {}, model, options);
 }
