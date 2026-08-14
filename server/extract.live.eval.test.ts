@@ -48,9 +48,10 @@ function resolveLiveEvalThink(): boolean | undefined {
   );
 }
 
-function isSchemaFailure(err: unknown): boolean {
-  if (err instanceof SyntaxError) return true;
-  return err instanceof Error && err.name === "ZodError";
+function failingIdForExtractError(err: unknown): string {
+  if (err instanceof Error && err.name === "ZodError") return "schema-valid";
+  if (err instanceof SyntaxError) return "json-parse";
+  return "extract-error";
 }
 
 function formatExtractError(err: unknown): string {
@@ -149,9 +150,7 @@ describe.skipIf(!LIVE_EVAL_ENABLED)("extract Level 1 live", () => {
         expect(failureDetail).toBe("");
       } catch (err) {
         answer = formatExtractError(err);
-        const failingIds = isSchemaFailure(err)
-          ? ["schema-valid"]
-          : ["extract-error"];
+        const failingIds = [failingIdForExtractError(err)];
         caseResults.push({
           id: level1Case.id,
           pass: false,
