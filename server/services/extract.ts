@@ -1,5 +1,18 @@
-import { chatJsonStreaming, type StreamTokenPhase } from "./ollama";
+import {
+  chatJsonStreaming,
+  type OllamaChatOptions,
+  type StreamTokenPhase,
+} from "./ollama";
 import { parseLlmExtraction, type LlmExtraction } from "../shared/schema";
+
+export type ExtractLlmOptions = OllamaChatOptions;
+
+/** Extraction defaults; caller fields override (chat is unchanged). */
+export function resolveExtractLlmOptions(
+  options?: ExtractLlmOptions,
+): ExtractLlmOptions {
+  return { think: false, ...options };
+}
 
 const MAX_TEXT_CHARS = 24_000;
 
@@ -51,8 +64,14 @@ export async function extractFromPdfText(
   filename: string,
   model: string,
   onToken?: (token: string, phase: StreamTokenPhase) => void,
+  options?: ExtractLlmOptions,
 ): Promise<LlmExtraction> {
   const prompt = buildExtractionPrompt(pdfText, filename);
-  const raw = await chatJsonStreaming<unknown>(prompt, onToken ?? (() => {}), model);
+  const raw = await chatJsonStreaming<unknown>(
+    prompt,
+    onToken ?? (() => {}),
+    model,
+    resolveExtractLlmOptions(options),
+  );
   return parseLlmExtraction(raw);
 }

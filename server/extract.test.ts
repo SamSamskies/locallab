@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildExtractionPrompt } from "./services/extract";
+import { buildExtractionPrompt, resolveExtractLlmOptions } from "./services/extract";
 import {
   buildOverallTrendInsightPrompt,
   buildTrendInsightPrompt,
@@ -93,6 +93,23 @@ describe("normalizeFlag", () => {
 
   test("returns unknown when value missing", () => {
     expect(normalizeFlag(undefined, null, 10, 20)).toBe("unknown");
+  });
+});
+
+describe("resolveExtractLlmOptions", () => {
+  test("defaults think to false", () => {
+    expect(resolveExtractLlmOptions()).toEqual({ think: false });
+  });
+
+  test("keeps think false when merging temperature", () => {
+    expect(resolveExtractLlmOptions({ temperature: 0 })).toEqual({
+      think: false,
+      temperature: 0,
+    });
+  });
+
+  test("allows think override", () => {
+    expect(resolveExtractLlmOptions({ think: true })).toEqual({ think: true });
   });
 });
 

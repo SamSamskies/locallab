@@ -7,6 +7,9 @@
 //   npm run test:live-eval -- --suite trend --model gemma4:26b
 //   npm run test:live-eval -- --suite panel --model qwen3.6:27b --timeout-ms 1200000
 //   npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
+//   npm run test:live-eval -- --suite extract --model gemma4:26b-mlx
+//   npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --temperature 0
+//   npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --think true
 //   OLLAMA_MODEL=gemma4:26b npm run test:live-eval
 //
 // Runs server/*.live.eval.test.ts via vitest.live.config.ts
@@ -17,6 +20,8 @@
 //   OLLAMA_MODEL                    Model name (required; override with --model / -m)
 //   LOCALLAB_LIVE_EVAL_TIMEOUT_MS   Per-case timeout in ms (default 900000 / 15m; --timeout-ms / -t)
 //   LOCALLAB_LIVE_EVAL_TRIALS       Independent full-suite repeats for pass^k (default 1; --trials / -k)
+//   LOCALLAB_LIVE_EVAL_TEMPERATURE  Set only from --temperature (not .env; omit = unset)
+//   LOCALLAB_LIVE_EVAL_THINK        Set only from --think true|false (not .env; omit = production false)
 //   OLLAMA_URL                      Ollama base URL (default in app: http://localhost:11434)
 //
 import { spawn } from "node:child_process";
@@ -31,6 +36,7 @@ const DEFAULT_TRIALS = 1;
 const LIVE_EVAL_FILES = {
   panel: "server/panelChat.live.eval.test.ts",
   trend: "server/trendChat.live.eval.test.ts",
+  extract: "server/extract.live.eval.test.ts",
 };
 
 /** @returns {Record<string, string>} */
@@ -89,18 +95,51 @@ function parsePositiveInt(raw, label) {
 
 /**
  * @param {string | undefined} raw
+ * @param {string} label
+ * @returns {number | undefined}
+ */
+function parseTemperature(raw, label) {
+  if (raw === undefined) return undefined;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    console.error(`${label} must be a number >= 0 (got ${JSON.stringify(raw)}).`);
+    process.exit(1);
+  }
+  return parsed;
+}
+
+/**
+ * @param {string | undefined} raw
+ * @param {string} label
+ * @returns {boolean | undefined}
+ */
+function parseThink(raw, label) {
+  if (raw === undefined) return undefined;
+  const trimmed = String(raw).trim().toLowerCase();
+  if (!trimmed) return undefined;
+  if (trimmed === "true" || trimmed === "1") return true;
+  if (trimmed === "false" || trimmed === "0") return false;
+  console.error(`${label} must be true or false (got ${JSON.stringify(raw)}).`);
+  process.exit(1);
+}
+
+/**
+ * @param {string | undefined} raw
  * @returns {string[]}
  */
 function resolveSuiteFiles(raw) {
   const suite = (raw ?? "all").trim().toLowerCase();
   if (suite === "all") {
+    // Chat suites only — extract is opt-in via --suite extract.
     return [LIVE_EVAL_FILES.panel, LIVE_EVAL_FILES.trend];
   }
-  if (suite === "panel" || suite === "trend") {
+  if (suite === "panel" || suite === "trend" || suite === "extract") {
     return [LIVE_EVAL_FILES[suite]];
   }
   console.error(
-    `--suite must be panel, trend, or all (got ${JSON.stringify(raw)}).`,
+    `--suite must be panel, trend, extract, or all (got ${JSON.stringify(raw)}).`,
   );
   process.exit(1);
 }
@@ -140,6 +179,8 @@ const { values } = parseArgs({
     "timeout-ms": { type: "string", short: "t" },
     suite: { type: "string", short: "s" },
     trials: { type: "string", short: "k" },
+    temperature: { type: "string" },
+    think: { type: "string" },
   },
   allowPositionals: true,
 });
@@ -176,6 +217,30 @@ if (trialsFromFlag !== undefined) {
 
 const trials = parsePositiveInt(env.LOCALLAB_LIVE_EVAL_TRIALS, "LOCALLAB_LIVE_EVAL_TRIALS");
 
+const temperatureFromFlag = parseTemperature(values.temperature, "--temperature");
+if (temperatureFromFlag !== undefined) {
+  env.LOCALLAB_LIVE_EVAL_TEMPERATURE = String(temperatureFromFlag);
+} else {
+  if (String(env.LOCALLAB_LIVE_EVAL_TEMPERATURE ?? "").trim()) {
+    console.warn(
+      "[live-eval] ignoring LOCALLAB_LIVE_EVAL_TEMPERATURE from the environment; pass --temperature to set it (omit = production unset)",
+    );
+  }
+  delete env.LOCALLAB_LIVE_EVAL_TEMPERATURE;
+}
+
+const thinkFromFlag = parseThink(values.think, "--think");
+if (thinkFromFlag !== undefined) {
+  env.LOCALLAB_LIVE_EVAL_THINK = String(thinkFromFlag);
+} else {
+  if (String(env.LOCALLAB_LIVE_EVAL_THINK ?? "").trim()) {
+    console.warn(
+      "[live-eval] ignoring LOCALLAB_LIVE_EVAL_THINK from the environment; pass --think to set it (omit = production false)",
+    );
+  }
+  delete env.LOCALLAB_LIVE_EVAL_THINK;
+}
+
 if (!String(env.OLLAMA_MODEL ?? "").trim()) {
   console.error(
     "OLLAMA_MODEL is required for live evals.\n" +
@@ -187,9 +252,22 @@ if (!String(env.OLLAMA_MODEL ?? "").trim()) {
 
 const suiteFiles = resolveSuiteFiles(values.suite);
 const suiteLabel = values.suite ?? "all";
+const temperatureLabel = String(env.LOCALLAB_LIVE_EVAL_TEMPERATURE ?? "").trim();
+const thinkLabel = String(env.LOCALLAB_LIVE_EVAL_THINK ?? "").trim();
+
+if (
+  (temperatureLabel || thinkLabel) &&
+  !suiteFiles.includes(LIVE_EVAL_FILES.extract)
+) {
+  console.warn(
+    `[live-eval] --temperature / --think are ignored for suite=${suiteLabel} (extraction only)`,
+  );
+}
 
 console.log(
-  `[live-eval] suite=${suiteLabel} model=${env.OLLAMA_MODEL} timeoutMs=${env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS} trials=${trials}`,
+  `[live-eval] suite=${suiteLabel} model=${env.OLLAMA_MODEL} timeoutMs=${env.LOCALLAB_LIVE_EVAL_TIMEOUT_MS} trials=${trials}` +
+    (temperatureLabel ? ` temperature=${temperatureLabel}` : "") +
+    (thinkLabel ? ` think=${thinkLabel}` : ""),
 );
 
 /** @type {boolean[]} */

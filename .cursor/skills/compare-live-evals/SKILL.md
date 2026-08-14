@@ -1,11 +1,12 @@
 ---
 name: compare-live-evals
 description: >-
-  Compare Ollama models on Level 1 live evals (panel and/or trend) via
-  npm run test:live-eval -- --suite panel|trend, then write per-run comparison
+  Compare Ollama models on Level 1 live evals (panel, trend, and/or extract) via
+  npm run test:live-eval -- --suite panel|trend|extract, then write per-run comparison
   cards under evals/comparisons/. Use when the user asks to compare live evals,
   benchmark models on live scoring, or names models to run against Level 1
-  (e.g. "compare trend live evals against gemma4:26b and medgemma1.5:latest").
+  (e.g. "compare trend live evals against gemma4:26b and medgemma1.5:latest",
+  "compare extract against gemma4:26b-mlx and medgemma1.5:latest").
   For a single-model reference run, use baseline-live-evals instead.
 ---
 
@@ -15,12 +16,14 @@ Run the same Level 1 live assertions against each named model and record results
 
 ## Scope
 
-- **One suite per report file** (or one file per suite when comparing `all`): `panel` or `trend`
-- **Never** pass launcher default `all` as a single blended run — if the user wants both, run panel then trend as separate suite passes and write separate reports (or one file with two top-level suite sections)
+- **One suite per report file** (or one file per suite when comparing `all`): `panel`, `trend`, or `extract`
+- **Never** pass launcher default `all` as a single blended run — if the user wants both chat suites, run panel then trend as separate suite passes and write separate reports (or one file with two top-level suite sections). `all` does **not** include extract.
 - **Do not** run higher levels, unit tests, or change assertion code for a comparison run
 - **Do not** write single-model baselines here — use `baseline-live-evals` → `evals/baselines/`
-- Case count follows the suite golden set (panel 3, trend 4)
-- **Prompt**: production chat guidance only (no prompt-variant flag). If the user asks to A/B prompts, say variants are not wired—compare models, or add a new variant first.
+- Case count follows the suite golden set (panel 3, trend 4, extract 2)
+- **Prompt**: production path only (chat guidance for panel/trend; `extractFromPdfText` for extract). If the user asks to A/B chat prompts, say variants are not wired—compare models, or add a new variant first.
+- **Temperature (extract only)**: if the user asks to A/B temperature on extract, each value is a run (`--temperature <n>`; omit for model default). Do not pass `--temperature` on panel/trend.
+- **Think (extract only)**: if the user asks to A/B Ollama `think` on extract, each value is a run (`--think true|false`; omit = production `false`). Do not pass `--think` on panel/trend.
 
 ### Suites
 
@@ -28,6 +31,7 @@ Run the same Level 1 live assertions against each named model and record results
 | :--- | :--- | :--- | :--- |
 | panel | `--suite panel` | `glucose-high`, `all-normal-cbc`, `elevated-tsh-leading` (3) | yes (when suite omitted) |
 | trend | `--suite trend` | `ldl-rising`, `triglycerides-falling`, `cholesterol-leading`, `hdl-stable` (4) | no |
+| extract | `--suite extract` | `cmp-glucose-high`, `cbc-all-normal` (2) | no |
 
 ## Prerequisites
 
@@ -41,7 +45,7 @@ Copy and track:
 
 ```
 Compare live evals:
-- [ ] Parse suite (panel|trend|all; default panel) and models from the user message
+- [ ] Parse suite (panel|trend|extract|all; default panel) and models from the user message
 - [ ] Confirm Level 1 only (refuse / clarify if they ask for other levels)
 - [ ] For each suite × model: live-eval with --suite and --model; capture output + wall-clock
 - [ ] Parse pass rate, failing assertion ids, and raw model answers per case
@@ -79,10 +83,12 @@ For **each** suite in scope, for **each** model, sequentially:
 ```bash
 # Record wall-clock around the suite (seconds, one decimal ok)
 START=$(date +%s)
-npm run test:live-eval -- --suite "<panel|trend>" --model "<model>" 2>&1 | tee "/tmp/locallab-live-eval-<suite>-<safe-model>.log"
+npm run test:live-eval -- --suite "<panel|trend|extract>" --model "<model>" 2>&1 | tee "/tmp/locallab-live-eval-<suite>-<safe-model>.log"
 END=$(date +%s)
 echo "SUITE_WALL_CLOCK_S=$((END - START))"
 ```
+
+For an extract temperature or think A/B, add `--temperature <n>` and/or `--think true` on the non-default run (and put the harness flag in the log filename / card heading). Do not parallelize.
 
 Notes:
 
@@ -108,7 +114,7 @@ Also note the launcher line: `[live-eval] suite=... model=... timeoutMs=...`
 
 Rules:
 
-- **Pass rate**: use `passed / <N> cases` (panel N=3, trend N=4). If the summary line is missing, count passed vs failed from per-case lines / vitest results; still report over the suite case count.
+- **Pass rate**: use `passed / <N> cases` (panel N=3, trend N=4, extract N=2). If the summary line is missing, count passed vs failed from per-case lines / vitest results; still report over the suite case count.
 - **Failing assertion ids**: copy assertion ids from the summary. If a case failed with multiple ids, include them all. Format as a comma-separated list, optionally prefixed with case id (`glucose-high: mentions-glucose-108` or `ldl-rising: cites-ldl-95-and-110`). Use `none` when all cases pass.
 - **Model responses**: for **every completed case**, extract the text between `raw answer begin case=<id>` and `raw answer end case=<id>` (inclusive markers not copied). Include **all** cases (pass and fail) — failing assertion ids alone are not enough for grader triage. If a case never finished, omit it and note the error in the decision sentence.
 - **Suite wall-clock**: seconds from the timer around that run's `npm run test:live-eval` invocation (not per-case timeout).
