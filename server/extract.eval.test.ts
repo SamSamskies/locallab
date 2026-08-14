@@ -174,6 +174,7 @@ describe("marker matching helpers", () => {
     expect(collectedDateMatches("6/1/2024", "2024-06-01")).toBe(true);
     expect(collectedDateMatches("June 1, 2024", "2024-06-01")).toBe(true);
     expect(collectedDateMatches("2024-07-15", "2024-06-01")).toBe(false);
+    expect(collectedDateMatches("2024-06-015", "2024-06-01")).toBe(false);
     expect(collectedDateMatches(null, "2024-06-01")).toBe(false);
   });
 });

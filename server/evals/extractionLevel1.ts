@@ -96,7 +96,9 @@ export function collectedDateMatches(
 ): boolean {
   if (!actual) return false;
   const trimmed = actual.trim();
-  if (trimmed.includes(expectedIso)) return true;
+  // Whole YYYY-MM-DD token, optionally followed by a datetime suffix (T/space),
+  // not a longer digit run such as 2024-06-015.
+  if (new RegExp(String.raw`\b${expectedIso}(?!\d)`).test(trimmed)) return true;
 
   const parts = expectedIso.split("-").map(Number);
   const year = parts[0];
