@@ -65,7 +65,7 @@ npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
 npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
 ```
 
-On failure, the suite logs failing assertion ids and the raw model answer for each case (JSON for extract). `--trials` / `-k` (or `LOCALLAB_LIVE_EVAL_TRIALS`) repeats the full suite for pass^k; default is `1` (baselines / compares). Ship gate uses `3`. `--temperature` and `--think` apply to **extract** only. Production extraction sets `think: false` and leaves temperature unset; omit the flags to match that path. Chat is unchanged.
+On failure, the suite logs failing assertion ids and the raw model answer for each case (JSON for extract). `--trials` / `-k` (or `LOCALLAB_LIVE_EVAL_TRIALS`) repeats the full suite for pass^k; default is `1` (baselines / compares). Ship gate uses `3`. `--temperature` and `--think` apply to **extract** only and are flag-only (not inherited from `.env`). Production extraction sets `think: false` and leaves temperature unset; omit the flags to match that path. Chat is unchanged.
 
 ### Baselines and model comparisons
 
@@ -100,8 +100,6 @@ Extract gate runs must omit `--think` / `--temperature` so they match production
 | `LOCALLAB_LIVE_EVAL` | `0` | Keep `0` for normal use; `test:live-eval` sets this to `1` |
 | `LOCALLAB_LIVE_EVAL_TIMEOUT_MS` | `900000` | Per-case live-eval timeout in ms; override with `--timeout-ms` |
 | `LOCALLAB_LIVE_EVAL_TRIALS` | `1` | Independent full-suite repeats for pass^k; override with `--trials` / `-k` (ship gate: `3`) |
-| `LOCALLAB_LIVE_EVAL_TEMPERATURE` | — | Ollama temperature for `--suite extract` only; override with `--temperature` (omit = unset, matching production) |
-| `LOCALLAB_LIVE_EVAL_THINK` | — | Ollama `think` for `--suite extract` only; override with `--think true` or `--think false` (omit = production `false`) |
 | `PORT` | `3001` | Express API port |
 
 Choose a model from the web UI before uploading or generating insights.

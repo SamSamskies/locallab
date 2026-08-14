@@ -20,8 +20,8 @@
 //   OLLAMA_MODEL                    Model name (required; override with --model / -m)
 //   LOCALLAB_LIVE_EVAL_TIMEOUT_MS   Per-case timeout in ms (default 900000 / 15m; --timeout-ms / -t)
 //   LOCALLAB_LIVE_EVAL_TRIALS       Independent full-suite repeats for pass^k (default 1; --trials / -k)
-//   LOCALLAB_LIVE_EVAL_TEMPERATURE  Ollama temperature for extract only (--temperature; omit = unset)
-//   LOCALLAB_LIVE_EVAL_THINK        Ollama think for extract only (--think true|false; omit = production false)
+//   LOCALLAB_LIVE_EVAL_TEMPERATURE  Set only from --temperature (not .env; omit = unset)
+//   LOCALLAB_LIVE_EVAL_THINK        Set only from --think true|false (not .env; omit = production false)
 //   OLLAMA_URL                      Ollama base URL (default in app: http://localhost:11434)
 //
 import { spawn } from "node:child_process";
@@ -220,15 +220,25 @@ const trials = parsePositiveInt(env.LOCALLAB_LIVE_EVAL_TRIALS, "LOCALLAB_LIVE_EV
 const temperatureFromFlag = parseTemperature(values.temperature, "--temperature");
 if (temperatureFromFlag !== undefined) {
   env.LOCALLAB_LIVE_EVAL_TEMPERATURE = String(temperatureFromFlag);
-} else if (String(env.LOCALLAB_LIVE_EVAL_TEMPERATURE ?? "").trim()) {
-  parseTemperature(env.LOCALLAB_LIVE_EVAL_TEMPERATURE, "LOCALLAB_LIVE_EVAL_TEMPERATURE");
+} else {
+  if (String(env.LOCALLAB_LIVE_EVAL_TEMPERATURE ?? "").trim()) {
+    console.warn(
+      "[live-eval] ignoring LOCALLAB_LIVE_EVAL_TEMPERATURE from the environment; pass --temperature to set it (omit = production unset)",
+    );
+  }
+  delete env.LOCALLAB_LIVE_EVAL_TEMPERATURE;
 }
 
 const thinkFromFlag = parseThink(values.think, "--think");
 if (thinkFromFlag !== undefined) {
   env.LOCALLAB_LIVE_EVAL_THINK = String(thinkFromFlag);
-} else if (String(env.LOCALLAB_LIVE_EVAL_THINK ?? "").trim()) {
-  parseThink(env.LOCALLAB_LIVE_EVAL_THINK, "LOCALLAB_LIVE_EVAL_THINK");
+} else {
+  if (String(env.LOCALLAB_LIVE_EVAL_THINK ?? "").trim()) {
+    console.warn(
+      "[live-eval] ignoring LOCALLAB_LIVE_EVAL_THINK from the environment; pass --think to set it (omit = production false)",
+    );
+  }
+  delete env.LOCALLAB_LIVE_EVAL_THINK;
 }
 
 if (!String(env.OLLAMA_MODEL ?? "").trim()) {
