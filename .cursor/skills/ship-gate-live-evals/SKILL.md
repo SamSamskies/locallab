@@ -21,7 +21,7 @@ Two independent rituals. Never average them. Never require chat because extract 
 
 - Change the user-facing chat default model
 - Ship a chat prompt / guidance change
-- Merge a chat harness change that alters what production sends the model
+- Merge a chat harness change that alters what production sends the model (including `think`)
 
 **Extract gate** when you would:
 
@@ -46,7 +46,7 @@ Extract:
 - Gate model **must** match production config: `OLLAMA_MODEL` in `.env` (local default: `gemma4:26b-mlx`). A green run on a different pull is not the gate. If overriding, document the one-line override in the PR.
 - Repo root as cwd
 - Trial budget **k** (default **3**): the gated suite(s) must pass `k` independent full runs (`--trials k` / `LOCALLAB_LIVE_EVAL_TRIALS`)
-- Extract gate runs the **production** extract path: omit `--think` and `--temperature` (production sets `think: false` and leaves temperature unset)
+- Chat and extract gates run the **production** path: omit `--think` (production sets `think: false` on chat and extract). Extract also omits `--temperature` (production leaves it unset)
 
 ## Workflow
 
@@ -57,6 +57,7 @@ Ship gate live evals:
 - [ ] Confirm k (default 3) — pass^k, not pass@1
 - [ ] Chat trigger: panel Level 1 with --trials k → k/k trial clears (each 3/3)
 - [ ] Chat trigger: trend Level 1 with --trials k → k/k trial clears (each 4/4; separate score; do not average)
+- [ ] Chat trigger: omit --think on panel and trend (production think: false)
 - [ ] Extract trigger: extract Level 1 with --trials k → k/k trial clears (each 2/2); omit --think / --temperature
 - [ ] If any trial fails: triage (true fail vs grader FP vs flake) before product “fixes”
 - [ ] Do not ship on a partial trial streak or a single lucky green
@@ -76,6 +77,8 @@ npm run test:live-eval -- --suite trend --model "<exact-tag>" --trials 3
 npm run test:live-eval -- --suite extract --model "<exact-tag>" --trials 3
 ```
 
+Do not pass `--think` on chat or extract gate runs (must match production `think: false`).
+
 Equivalent env form: `LOCALLAB_LIVE_EVAL_TRIALS=3`.
 
 Expect launcher lines `pass^3 cleared: suite=panel`, `pass^3 cleared: suite=trend`, and/or `pass^3 cleared: suite=extract` (each trial itself full suite green: panel **3 / 3**, trend **4 / 4**, extract **2 / 2**). Optionally also write baseline-style reports under `evals/baselines/` after a clear if you want a durable record — the gate itself is the multi-trial exit codes + `pass^k cleared` lines.
@@ -94,7 +97,8 @@ Override k only when the user asks (e.g. `--trials 5`); start at 3.
 - Do not average panel + trend + extract into one score
 - Do not skip panel because trend just passed (or the reverse)
 - Do not fold extract into the chat dual-suite, or require chat suites for an extract-only change
-- Do not pass `--think` / `--temperature` on an extract gate run (must match production)
+- Do not pass `--think` on a chat or extract gate run (must match production `think: false`)
+- Do not pass `--temperature` on an extract gate run (must match production)
 - Do not treat `npm test` / `verify` as this gate
 - Do not silently substitute a different Ollama tag
 - Do not ship on pass@1 folklore when the ritual requires pass^k

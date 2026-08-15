@@ -1,4 +1,6 @@
 import type {
+  AppSettings,
+  AppSettingsPatch,
   CachedTrendInsight,
   ChatContextType,
   ChatConversation,
@@ -144,6 +146,22 @@ export async function fetchModels(): Promise<ModelInfo[]> {
   return handleResponse(await fetch("/api/models"));
 }
 
+export async function fetchSettings(): Promise<AppSettings> {
+  return handleResponse(await fetch("/api/settings"));
+}
+
+export async function updateSettings(
+  patch: AppSettingsPatch,
+): Promise<AppSettings> {
+  return handleResponse(
+    await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }),
+  );
+}
+
 export async function fetchPanels(): Promise<PanelListItem[]> {
   return handleResponse(await fetch("/api/panels"));
 }
@@ -266,6 +284,7 @@ export async function sendChatMessage(
     contextKey: string;
     model: string;
     message: string;
+    think?: boolean;
   },
   onEvent?: (event: ChatStreamEvent) => void,
   signal?: AbortSignal,

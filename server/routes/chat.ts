@@ -89,6 +89,7 @@ chatRouter.get("/conversations/:id/messages", (req, res) => {
 chatRouter.post("/conversations/messages", async (req, res) => {
   const model = typeof req.body?.model === "string" ? req.body.model.trim() : "";
   const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  const think = req.body?.think === true;
   const conversationIdRaw = req.body?.conversationId;
   const conversationId =
     conversationIdRaw == null || conversationIdRaw === ""
@@ -152,14 +153,14 @@ chatRouter.post("/conversations/messages", async (req, res) => {
   const send = (event: ChatStreamEvent) => writeStreamEvent(res, event);
 
   try {
-    send({ type: "status", message: "Thinking…" });
+    send({ type: "status", message: think ? "Reasoning…" : "Generating…" });
     let contentText = "";
     await generateChatReply(systemPrompt, history, message, (content, phase) => {
       if (phase === "content") {
         contentText += content;
       }
       send({ type: "token", content, phase });
-    }, model);
+    }, model, { think });
 
     const messages = appendMessages(db, conversation.id, [
       { role: "user", content: message },

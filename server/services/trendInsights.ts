@@ -1,5 +1,9 @@
 import type { OverallTrendContext, TrendSeries } from "../shared/schema";
-import { chatStreaming, type StreamTokenPhase } from "./ollama";
+import {
+  chatStreaming,
+  type OllamaChatOptions,
+  type StreamTokenPhase,
+} from "./ollama";
 
 function formatRefRange(
   refLow: number | null,
@@ -40,9 +44,10 @@ export async function generateTrendInsight(
   series: TrendSeries,
   onToken: (token: string, phase: StreamTokenPhase) => void,
   model: string,
+  options?: OllamaChatOptions,
 ): Promise<string> {
   const prompt = buildTrendInsightPrompt(series);
-  return chatStreaming(prompt, onToken, model);
+  return chatStreaming(prompt, onToken, model, options);
 }
 
 function formatOverallMarkerRow(marker: OverallTrendContext["markers"][number]): string {
@@ -114,7 +119,8 @@ export async function generateOverallTrendInsight(
   context: OverallTrendContext,
   onToken: (token: string, phase: StreamTokenPhase) => void,
   model: string,
+  options?: OllamaChatOptions,
 ): Promise<string> {
   const prompt = buildOverallTrendInsightPrompt(context);
-  return chatStreaming(prompt, onToken, model);
+  return chatStreaming(prompt, onToken, model, options);
 }

@@ -24,6 +24,8 @@ interface ChatPanelProps {
   contextType: ChatContextType;
   contextKey: string;
   model: string;
+  think: boolean;
+  onThinkChange: (think: boolean) => void;
 }
 
 function conversationLabel(conversation: ChatConversation): string {
@@ -51,7 +53,13 @@ function setBackgroundInert(dialog: HTMLElement, enabled: boolean) {
   }
 }
 
-export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
+export function ChatPanel({
+  contextType,
+  contextKey,
+  model,
+  think,
+  onThinkChange,
+}: ChatPanelProps) {
   const [open, setOpen] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -260,7 +268,7 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
     setMessages((prev) => [...prev, optimisticUser]);
     setInput("");
     setSending(true);
-    setStatus("Thinking…");
+    setStatus(think ? "Reasoning…" : "Generating…");
     setThinkingText("");
     setStreamingContent("");
     setError(null);
@@ -273,6 +281,7 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
           contextKey,
           model,
           message: trimmed,
+          think,
         },
         (event) => {
           if (controller.signal.aborted) return;
@@ -281,7 +290,9 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
             setStatus(event.message);
           } else if (event.type === "token") {
             if (event.phase === "thinking") {
-              setThinkingText((prev) => prev + event.content);
+              if (think) {
+                setThinkingText((prev) => prev + event.content);
+              }
             } else {
               setStreamingContent((prev) => prev + event.content);
             }
@@ -314,8 +325,8 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
     }
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
       event.preventDefault();
       void handleSend();
     }
@@ -418,6 +429,8 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
               <div className="loading chat-loading">
                 <div className="spinner" />
               </div>
+            ) : messages.length === 0 && !sending ? (
+              <p className="chat-empty">Ask a question about this {contextType}.</p>
             ) : (
               messages.map((message) => (
                 <div
@@ -435,7 +448,7 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
 
             {sending && (
               <div className="chat-message chat-message-assistant chat-message-streaming">
-                {thinkingText ? (
+                {think && thinkingText ? (
                   <details className="trend-insights-thinking" open>
                     <summary>Model reasoning</summary>
                     <pre>{thinkingText}</pre>
@@ -451,23 +464,59 @@ export function ChatPanel({ contextType, contextKey, model }: ChatPanelProps) {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="chat-input-row">
-            <textarea
+          <div className="chat-composer">
+            <input
+              type="text"
               className="chat-input"
-              rows={2}
               placeholder={model ? "Ask a question…" : "Select a model to chat"}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={!model || sending}
+              aria-label="Chat message"
             />
             <button
               type="button"
-              className="btn btn-primary"
+              className={`chat-composer-icon-btn${think ? " active" : ""}`}
+              aria-label={think ? "Disable model reasoning" : "Enable model reasoning"}
+              aria-pressed={think}
+              title={
+                think
+                  ? "Reasoning on — slower, shows model thought process"
+                  : "Reasoning off — faster replies"
+              }
+              onClick={() => onThinkChange(!think)}
+              disabled={sending}
+            >
+              <svg
+                className="chat-composer-icon"
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
+                <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
+                <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" />
+                <path d="M17.599 6.5a.01.01 0 0 0 .01-.01V6.5a.01.01 0 0 0-.01-.01" />
+                <path d="M6.401 6.5a.01.01 0 0 0-.01-.01V6.5a.01.01 0 0 0 .01-.01" />
+                <path d="M6 17a.01.01 0 0 1 .01-.01H6.01a.01.01 0 0 1 .01.01" />
+                <path d="M18 17a.01.01 0 0 1 .01-.01H18.01a.01.01 0 0 1 .01.01" />
+                <path d="M12 20a.01.01 0 0 1 .01-.01H12.01a.01.01 0 0 1 .01.01" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary chat-send-btn"
               onClick={() => void handleSend()}
               disabled={!model || sending || !input.trim()}
             >
-              {sending ? "Sending…" : "Send"}
+              {sending ? "…" : "Send"}
             </button>
           </div>
         </div>

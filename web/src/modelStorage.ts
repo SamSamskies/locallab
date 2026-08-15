@@ -1,5 +1,6 @@
 const STORAGE_KEY = "locallab.selectedModel";
 
+/** Legacy browser-only model preference; migrated into SQLite app settings. */
 export function getStoredModel(): string | null {
   try {
     return localStorage.getItem(STORAGE_KEY);
@@ -8,10 +9,10 @@ export function getStoredModel(): string | null {
   }
 }
 
-export function setStoredModel(model: string): void {
+export function clearStoredModel(): void {
   try {
-    localStorage.setItem(STORAGE_KEY, model);
+    localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // Ignore quota errors and private browsing restrictions.
+    // Ignore private browsing restrictions.
   }
 }

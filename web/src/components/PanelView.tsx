@@ -8,11 +8,20 @@ import { MarkerTable } from "./MarkerTable";
 interface PanelViewProps {
   panel: PanelResponse;
   model: string;
+  chatThink: boolean;
+  onChatThinkChange: (think: boolean) => void;
   onMarkerClick?: (name: string) => void;
   onDelete?: (id: number) => Promise<void> | void;
 }
 
-export function PanelView({ panel, model, onMarkerClick, onDelete }: PanelViewProps) {
+export function PanelView({
+  panel,
+  model,
+  chatThink,
+  onChatThinkChange,
+  onMarkerClick,
+  onDelete,
+}: PanelViewProps) {
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -77,7 +86,13 @@ export function PanelView({ panel, model, onMarkerClick, onDelete }: PanelViewPr
 
       <MarkerTable markers={panel.markers} onMarkerClick={onMarkerClick} />
 
-      <ChatPanel contextType="panel" contextKey={String(panel.id)} model={model} />
+      <ChatPanel
+        contextType="panel"
+        contextKey={String(panel.id)}
+        model={model}
+        think={chatThink}
+        onThinkChange={onChatThinkChange}
+      />
     </div>
   );
 }

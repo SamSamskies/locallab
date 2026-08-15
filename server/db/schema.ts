@@ -61,13 +61,20 @@ export const chatMessages = sqliteTable("chat_messages", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 export type Panel = typeof panels.$inferSelect;
 export type Marker = typeof markers.$inferSelect;
 export type TrendInsight = typeof trendInsights.$inferSelect;
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+export type AppSetting = typeof appSettings.$inferSelect;
 export type NewPanel = typeof panels.$inferInsert;
 export type NewMarker = typeof markers.$inferInsert;
 export type NewTrendInsight = typeof trendInsights.$inferInsert;
 export type NewChatConversation = typeof chatConversations.$inferInsert;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
+export type NewAppSetting = typeof appSettings.$inferInsert;

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   buildOllamaChatRequestBody,
   parseJsonContent,
+  resolveChatLlmOptions,
 } from "./services/ollama";
 
 describe("buildOllamaChatRequestBody", () => {
@@ -36,6 +37,23 @@ describe("buildOllamaChatRequestBody", () => {
   test("omits format when undefined", () => {
     const body = buildOllamaChatRequestBody(messages, "gemma4:26b");
     expect(body).not.toHaveProperty("format");
+  });
+});
+
+describe("resolveChatLlmOptions", () => {
+  test("defaults think to false", () => {
+    expect(resolveChatLlmOptions()).toEqual({ think: false });
+  });
+
+  test("keeps think false when merging temperature", () => {
+    expect(resolveChatLlmOptions({ temperature: 0 })).toEqual({
+      think: false,
+      temperature: 0,
+    });
+  });
+
+  test("allows think override", () => {
+    expect(resolveChatLlmOptions({ think: true })).toEqual({ think: true });
   });
 });
 

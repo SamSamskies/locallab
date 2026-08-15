@@ -29,6 +29,16 @@ function resolveLiveEvalTimeoutMs(): number {
   return parsed;
 }
 
+function resolveLiveEvalThink(): boolean | undefined {
+  const raw = process.env.LOCALLAB_LIVE_EVAL_THINK?.trim().toLowerCase();
+  if (!raw) return undefined;
+  if (raw === "true" || raw === "1") return true;
+  if (raw === "false" || raw === "0") return false;
+  throw new Error(
+    `LOCALLAB_LIVE_EVAL_THINK must be true or false (got ${JSON.stringify(process.env.LOCALLAB_LIVE_EVAL_THINK)})`,
+  );
+}
+
 const LIVE_EVAL_TIMEOUT_MS = LIVE_EVAL_ENABLED
   ? resolveLiveEvalTimeoutMs()
   : DEFAULT_LIVE_EVAL_TIMEOUT_MS;
@@ -43,6 +53,7 @@ type CaseResult = {
 
 describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
   const model = process.env.OLLAMA_MODEL?.trim() ?? "";
+  const think = LIVE_EVAL_ENABLED ? resolveLiveEvalThink() : undefined;
   const caseResults: CaseResult[] = [];
 
   if (LIVE_EVAL_ENABLED && !model) {
@@ -88,6 +99,7 @@ describe.skipIf(!LIVE_EVAL_ENABLED)("panel chat Level 1 live", () => {
         level1Case.userMessage,
         noopToken,
         model,
+        think === undefined ? undefined : { think },
       );
       const assertionResults = evaluatePanelChatLevel1(answer, level1Case);
       const failures = assertionResults.filter((r) => !r.pass);
