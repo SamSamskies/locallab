@@ -89,7 +89,8 @@ export default function App() {
               // Keep the in-memory selection even if persistence fails.
             }
           }
-        } else if (legacy && settings) {
+        } else if (legacy && settings?.selectedModel) {
+          // SQLite already owns the preference; drop the obsolete browser copy.
           clearStoredModel();
         }
 
