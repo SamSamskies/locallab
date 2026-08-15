@@ -55,12 +55,27 @@ export default function App() {
 
     async function load() {
       try {
-        const [m, settings] = await Promise.all([fetchModels(), fetchSettings()]);
+        const [modelsResult, settingsResult] = await Promise.allSettled([
+          fetchModels(),
+          fetchSettings(),
+        ]);
         if (cancelled) return;
 
-        setModels(m);
-        setModelsError(null);
+        const m = modelsResult.status === "fulfilled" ? modelsResult.value : [];
+        if (modelsResult.status === "fulfilled") {
+          setModels(m);
+          setModelsError(null);
+        } else {
+          setModelsError(
+            modelsResult.reason instanceof Error
+              ? modelsResult.reason.message
+              : "Failed to load models",
+          );
+        }
 
+        if (settingsResult.status !== "fulfilled") return;
+
+        const settings = settingsResult.value;
         let selected = settings.selectedModel;
         const legacy = getStoredModel();
         if (!selected && legacy && m.some((entry) => entry.name === legacy)) {
@@ -79,10 +94,6 @@ export default function App() {
           setModel(selected);
         }
         setChatThink(settings.chatThink);
-      } catch (e) {
-        if (!cancelled) {
-          setModelsError(e instanceof Error ? e.message : "Failed to load models");
-        }
       } finally {
         if (!cancelled) setModelsLoading(false);
       }
