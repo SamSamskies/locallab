@@ -67,6 +67,22 @@ export const modelInfoSchema = z.object({
 
 export type ModelInfo = z.infer<typeof modelInfoSchema>;
 
+export const appSettingsSchema = z.object({
+  selectedModel: z.string().nullable(),
+  chatThink: z.boolean(),
+});
+
+export type AppSettings = z.infer<typeof appSettingsSchema>;
+
+export const appSettingsPatchSchema = z
+  .object({
+    selectedModel: z.string().nullable().optional(),
+    chatThink: z.boolean().optional(),
+  })
+  .strict();
+
+export type AppSettingsPatch = z.infer<typeof appSettingsPatchSchema>;
+
 export const trendPointSchema = z.object({
   panelId: z.number(),
   panelLabel: z.string(),

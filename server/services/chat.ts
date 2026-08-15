@@ -5,7 +5,12 @@ import { markers, panels } from "../db/schema";
 import type * as schema from "../db/schema";
 import type { ChatContextType, ChatMessage, PanelResponse, TrendSeries } from "../shared/schema";
 import { getTrendSeries } from "./trends";
-import { chatMessagesStreaming, type OllamaChatMessage, type StreamTokenPhase } from "./ollama";
+import {
+  chatMessagesStreaming,
+  type OllamaChatMessage,
+  type OllamaChatOptions,
+  type StreamTokenPhase,
+} from "./ollama";
 
 type Database = BetterSQLite3Database<typeof schema>;
 
@@ -165,6 +170,7 @@ export async function generateChatReply(
   userMessage: string,
   onToken: (token: string, phase: StreamTokenPhase) => void,
   model: string,
+  options?: OllamaChatOptions,
 ): Promise<string> {
   const messages: OllamaChatMessage[] = [
     { role: "system", content: systemPrompt },
@@ -175,5 +181,5 @@ export async function generateChatReply(
     { role: "user", content: userMessage },
   ];
 
-  return chatMessagesStreaming(messages, onToken, model);
+  return chatMessagesStreaming(messages, onToken, model, options);
 }

@@ -10,6 +10,7 @@
 //   npm run test:live-eval -- --suite extract --model gemma4:26b-mlx
 //   npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --temperature 0
 //   npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --think true
+//   npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --think true
 //   OLLAMA_MODEL=gemma4:26b npm run test:live-eval
 //
 // Runs server/*.live.eval.test.ts via vitest.live.config.ts
@@ -20,7 +21,7 @@
 //   OLLAMA_MODEL                    Model name (required; override with --model / -m)
 //   LOCALLAB_LIVE_EVAL_TIMEOUT_MS   Per-case timeout in ms (default 900000 / 15m; --timeout-ms / -t)
 //   LOCALLAB_LIVE_EVAL_TRIALS       Independent full-suite repeats for pass^k (default 1; --trials / -k)
-//   LOCALLAB_LIVE_EVAL_TEMPERATURE  Set only from --temperature (not .env; omit = unset)
+//   LOCALLAB_LIVE_EVAL_TEMPERATURE  Set only from --temperature (not .env; extract only; omit = unset)
 //   LOCALLAB_LIVE_EVAL_THINK        Set only from --think true|false (not .env; omit = production false)
 //   OLLAMA_URL                      Ollama base URL (default in app: http://localhost:11434)
 //
@@ -255,12 +256,9 @@ const suiteLabel = values.suite ?? "all";
 const temperatureLabel = String(env.LOCALLAB_LIVE_EVAL_TEMPERATURE ?? "").trim();
 const thinkLabel = String(env.LOCALLAB_LIVE_EVAL_THINK ?? "").trim();
 
-if (
-  (temperatureLabel || thinkLabel) &&
-  !suiteFiles.includes(LIVE_EVAL_FILES.extract)
-) {
+if (temperatureLabel && !suiteFiles.includes(LIVE_EVAL_FILES.extract)) {
   console.warn(
-    `[live-eval] --temperature / --think are ignored for suite=${suiteLabel} (extraction only)`,
+    `[live-eval] --temperature is ignored for suite=${suiteLabel} (extraction only)`,
   );
 }
 

@@ -42,6 +42,11 @@ sqlite.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation
     ON chat_messages(conversation_id);
+
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 
 export const db = drizzle(sqlite, { schema });

@@ -111,7 +111,6 @@ interface InsightPanelProps {
   title: string;
   loading: boolean;
   status: string;
-  thinkingText: string;
   contentText: string;
   error: string | null;
 }
@@ -120,7 +119,6 @@ function InsightPanel({
   title,
   loading,
   status,
-  thinkingText,
   contentText,
   error,
 }: InsightPanelProps) {
@@ -133,12 +131,6 @@ function InsightPanel({
       {error && <div className="error-banner">{error}</div>}
       {!error && (
         <div className="trend-insights-body">
-          {thinkingText ? (
-            <details className="trend-insights-thinking" open={loading}>
-              <summary>Model reasoning</summary>
-              <pre>{thinkingText}</pre>
-            </details>
-          ) : null}
           {contentText ? (
             <MarkdownContent content={contentText} />
           ) : loading ? (
@@ -154,6 +146,8 @@ type TrendsSubTab = "overall" | "marker";
 
 interface TrendsViewProps {
   model: string;
+  chatThink: boolean;
+  onChatThinkChange: (think: boolean) => void;
   initialMarker?: string | null;
 }
 
@@ -162,7 +156,12 @@ function resolveMarkerName(markers: TrendMarkerSummary[], name: string): string 
   return match?.name ?? null;
 }
 
-export function TrendsView({ model, initialMarker }: TrendsViewProps) {
+export function TrendsView({
+  model,
+  chatThink,
+  onChatThinkChange,
+  initialMarker,
+}: TrendsViewProps) {
   const [subTab, setSubTab] = useState<TrendsSubTab>(initialMarker ? "marker" : "overall");
   const [markers, setMarkers] = useState<TrendMarkerSummary[]>([]);
   const [selected, setSelected] = useState("");
@@ -172,7 +171,6 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightStatus, setInsightStatus] = useState("");
-  const [thinkingText, setThinkingText] = useState("");
   const [contentText, setContentText] = useState("");
   const [insightError, setInsightError] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(false);
@@ -182,7 +180,6 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
 
   const [overallInsightLoading, setOverallInsightLoading] = useState(false);
   const [overallInsightStatus, setOverallInsightStatus] = useState("");
-  const [overallThinkingText, setOverallThinkingText] = useState("");
   const [overallContentText, setOverallContentText] = useState("");
   const [overallInsightError, setOverallInsightError] = useState<string | null>(null);
   const [showOverallInsights, setShowOverallInsights] = useState(false);
@@ -236,7 +233,6 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
     if (markers.length === 0) {
       setShowOverallInsights(false);
       setHasCachedOverallInsight(false);
-      setOverallThinkingText("");
       setOverallContentText("");
       setOverallInsightError(null);
       return;
@@ -252,12 +248,10 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
         if (cached) {
           setShowOverallInsights(true);
           setHasCachedOverallInsight(true);
-          setOverallThinkingText("");
           setOverallContentText(cached.content);
         } else {
           setShowOverallInsights(false);
           setHasCachedOverallInsight(false);
-          setOverallThinkingText("");
           setOverallContentText("");
         }
       })
@@ -311,7 +305,6 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
     if (!selected || !series || series.points.length === 0) {
       setShowInsights(false);
       setHasCachedInsight(false);
-      setThinkingText("");
       setContentText("");
       setInsightError(null);
       return;
@@ -327,12 +320,10 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
         if (cached) {
           setShowInsights(true);
           setHasCachedInsight(true);
-          setThinkingText("");
           setContentText(cached.content);
         } else {
           setShowInsights(false);
           setHasCachedInsight(false);
-          setThinkingText("");
           setContentText("");
         }
       })
@@ -368,7 +359,6 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
     setShowOverallInsights(true);
     setOverallInsightLoading(true);
     setOverallInsightStatus("Analyzing overall health trends with local LLM…");
-    setOverallThinkingText("");
     setOverallContentText("");
     setOverallInsightError(null);
 
@@ -380,12 +370,8 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
 
           if (event.type === "status") {
             setOverallInsightStatus(event.message);
-          } else if (event.type === "token") {
-            if (event.phase === "thinking") {
-              setOverallThinkingText((prev) => prev + event.content);
-            } else {
-              setOverallContentText((prev) => prev + event.content);
-            }
+          } else if (event.type === "token" && event.phase === "content") {
+            setOverallContentText((prev) => prev + event.content);
           }
         },
         controller.signal,
@@ -418,7 +404,6 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
     setShowInsights(true);
     setInsightLoading(true);
     setInsightStatus("Analyzing trend with local LLM…");
-    setThinkingText("");
     setContentText("");
     setInsightError(null);
 
@@ -431,12 +416,8 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
 
           if (event.type === "status") {
             setInsightStatus(event.message);
-          } else if (event.type === "token") {
-            if (event.phase === "thinking") {
-              setThinkingText((prev) => prev + event.content);
-            } else {
-              setContentText((prev) => prev + event.content);
-            }
+          } else if (event.type === "token" && event.phase === "content") {
+            setContentText((prev) => prev + event.content);
           }
         },
         controller.signal,
@@ -527,7 +508,6 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
               title="Overall health insights"
               loading={overallInsightLoading}
               status={overallInsightStatus}
-              thinkingText={overallThinkingText}
               contentText={overallContentText}
               error={overallInsightError}
             />
@@ -632,14 +612,19 @@ export function TrendsView({ model, initialMarker }: TrendsViewProps) {
                   title="Trend insights"
                   loading={insightLoading}
                   status={insightStatus}
-                  thinkingText={thinkingText}
                   contentText={contentText}
                   error={insightError}
                 />
               )}
 
               {selected && (
-                <ChatPanel contextType="trend" contextKey={selected} model={model} />
+                <ChatPanel
+                  contextType="trend"
+                  contextKey={selected}
+                  model={model}
+                  think={chatThink}
+                  onThinkChange={onChatThinkChange}
+                />
               )}
             </>
           )}

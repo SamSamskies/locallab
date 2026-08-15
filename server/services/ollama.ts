@@ -45,6 +45,13 @@ export type OllamaChatOptions = {
   think?: boolean;
 };
 
+/** Chat / trend / insights defaults; caller fields override. */
+export function resolveChatLlmOptions(
+  options?: OllamaChatOptions,
+): OllamaChatOptions {
+  return { think: false, ...options };
+}
+
 export function buildOllamaChatRequestBody(
   messages: OllamaChatMessage[],
   model: string,
@@ -173,8 +180,14 @@ export async function chatMessagesStreaming(
   messages: OllamaChatMessage[],
   onToken: (token: string, phase: StreamTokenPhase) => void,
   model: string,
+  options?: OllamaChatOptions,
 ): Promise<string> {
-  const response = await chatRequest(messages, model, undefined);
+  const response = await chatRequest(
+    messages,
+    model,
+    undefined,
+    resolveChatLlmOptions(options),
+  );
   return readOllamaStream(response, onToken, getOllamaTimeoutMs());
 }
 
@@ -182,8 +195,14 @@ export async function chatStreaming(
   prompt: string,
   onToken: (token: string, phase: StreamTokenPhase) => void,
   model: string,
+  options?: OllamaChatOptions,
 ): Promise<string> {
-  return chatMessagesStreaming([{ role: "user", content: prompt }], onToken, model);
+  return chatMessagesStreaming(
+    [{ role: "user", content: prompt }],
+    onToken,
+    model,
+    options,
+  );
 }
 
 /** Strip a wrapping markdown fence so `format: json` payloads still parse. */

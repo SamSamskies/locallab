@@ -22,7 +22,7 @@ Capture one Level 1 live-eval run (one suite, one model) as a markdown baseline 
 - **Do not** change assertion code or fixtures to make the model pass
 - **Prompt**: production path only (chat guidance for panel/trend; `extractFromPdfText` / extraction prompt for extract)
 - **Temperature**: omit `--temperature` on extract baselines unless the user asks for a specific value (production extraction does not set temperature)
-- **Think**: omit `--think` on extract baselines unless the user asks (production extraction sets `think: false`; use `--think true` to A/B against thinking on)
+- **Think**: omit `--think` on baselines unless the user asks (production chat and extraction set `think: false`; use `--think true` to A/B against thinking on)
 
 ### Suites
 

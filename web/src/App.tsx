@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PanelListItem, PanelResponse } from "@shared/schema";
-import { deletePanel, fetchModels, fetchPanel, fetchPanels, uploadPanel } from "./api";
+import {
+  deletePanel,
+  fetchModels,
+  fetchPanel,
+  fetchPanels,
+  fetchSettings,
+  updateSettings,
+  uploadPanel,
+} from "./api";
 import { formatDate } from "./formatDate";
-import { getStoredModel, setStoredModel } from "./modelStorage";
+import { getStoredModel, clearStoredModel } from "./modelStorage";
 import { ExtractionProgress } from "./components/ExtractionProgress";
 import { ModelSelector } from "./components/ModelSelector";
 import { PanelView } from "./components/PanelView";
@@ -19,9 +27,9 @@ export default function App() {
   const [modelsLoading, setModelsLoading] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [model, setModel] = useState("");
+  const [chatThink, setChatThink] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("Extracting markers with local LLM…");
-  const [thinkingText, setThinkingText] = useState("");
   const [contentText, setContentText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<MainView>("panel");
@@ -34,26 +42,58 @@ export default function App() {
 
   const handleModelChange = useCallback((next: string) => {
     setModel(next);
-    if (next) {
-      setStoredModel(next);
-    }
+    void updateSettings({ selectedModel: next || null }).catch(() => {});
+  }, []);
+
+  const handleChatThinkChange = useCallback((next: boolean) => {
+    setChatThink(next);
+    void updateSettings({ chatThink: next }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetchModels()
-      .then((m) => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const [m, settings] = await Promise.all([fetchModels(), fetchSettings()]);
+        if (cancelled) return;
+
         setModels(m);
         setModelsError(null);
-        const stored = getStoredModel();
-        if (stored && m.some((entry) => entry.name === stored)) {
-          setModel(stored);
+
+        let selected = settings.selectedModel;
+        const legacy = getStoredModel();
+        if (!selected && legacy && m.some((entry) => entry.name === legacy)) {
+          selected = legacy;
+          try {
+            await updateSettings({ selectedModel: legacy });
+            clearStoredModel();
+          } catch {
+            // Keep the in-memory selection even if persistence fails.
+          }
+        } else if (legacy) {
+          clearStoredModel();
         }
-      })
-      .catch((e) => {
-        setModelsError(e instanceof Error ? e.message : "Failed to load models");
-      })
-      .finally(() => setModelsLoading(false));
+
+        if (selected && m.some((entry) => entry.name === selected)) {
+          setModel(selected);
+        }
+        setChatThink(settings.chatThink);
+      } catch (e) {
+        if (!cancelled) {
+          setModelsError(e instanceof Error ? e.message : "Failed to load models");
+        }
+      } finally {
+        if (!cancelled) setModelsLoading(false);
+      }
+    }
+
+    void load();
     loadPanels().catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadPanels]);
 
   const canUseModel = !modelsLoading && !modelsError && models.length > 0 && Boolean(model);
@@ -97,19 +137,14 @@ export default function App() {
     setView("panel");
     setLoading(true);
     setUploadStatus("Reading PDF…");
-    setThinkingText("");
     setContentText("");
     setError(null);
     try {
       const panel = await uploadPanel(file, model, (event) => {
         if (event.type === "status") {
           setUploadStatus(event.message);
-        } else if (event.type === "token") {
-          if (event.phase === "thinking") {
-            setThinkingText((prev) => prev + event.content);
-          } else {
-            setContentText((prev) => prev + event.content);
-          }
+        } else if (event.type === "token" && event.phase === "content") {
+          setContentText((prev) => prev + event.content);
         }
       });
       setSelectedPanel(panel);
@@ -119,7 +154,6 @@ export default function App() {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setLoading(false);
-      setThinkingText("");
       setContentText("");
     }
   };
@@ -203,17 +237,20 @@ export default function App() {
           {error && <div className="error-banner">{error}</div>}
 
           {view === "trends" ? (
-            <TrendsView model={model} initialMarker={trendMarker} />
-          ) : loading ? (
-            <ExtractionProgress
-              status={uploadStatus}
-              thinkingText={thinkingText}
-              contentText={contentText}
+            <TrendsView
+              model={model}
+              chatThink={chatThink}
+              onChatThinkChange={handleChatThinkChange}
+              initialMarker={trendMarker}
             />
+          ) : loading ? (
+            <ExtractionProgress status={uploadStatus} contentText={contentText} />
           ) : selectedPanel ? (
             <PanelView
               panel={selectedPanel}
               model={model}
+              chatThink={chatThink}
+              onChatThinkChange={handleChatThinkChange}
               onMarkerClick={openTrendForMarker}
               onDelete={handleDeletePanel}
             />
@@ -224,7 +261,7 @@ export default function App() {
                   ? "Select a report in the sidebar or upload a new lab report"
                   : "Upload a lab report to begin"}
               </h2>
-         
+
               <p>
                 Drop a text-based PDF on the left. LocalLab will extract your markers,
                 flag out-of-range values, and generate plain-language insights — all

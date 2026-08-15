@@ -7,7 +7,7 @@ import { parseLlmExtraction, type LlmExtraction } from "../shared/schema";
 
 export type ExtractLlmOptions = OllamaChatOptions;
 
-/** Extraction defaults; caller fields override (chat is unchanged). */
+/** Extraction defaults; caller fields override. */
 export function resolveExtractLlmOptions(
   options?: ExtractLlmOptions,
 ): ExtractLlmOptions {

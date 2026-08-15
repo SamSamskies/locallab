@@ -61,11 +61,12 @@ npm run test:live-eval -- --suite trend --model gemma4:26b
 npm run test:live-eval -- --suite extract --model gemma4:26b-mlx
 npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --temperature 0
 npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --think true
+npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --think true
 npm run test:live-eval -- --model qwen3.6:27b --timeout-ms 1200000
 npm run test:live-eval -- --suite panel --model gemma4:26b-mlx --trials 3
 ```
 
-On failure, the suite logs failing assertion ids and the raw model answer for each case (JSON for extract). `--trials` / `-k` (or `LOCALLAB_LIVE_EVAL_TRIALS`) repeats the full suite for pass^k; default is `1` (baselines / compares). Ship gate uses `3`. `--temperature` and `--think` apply to **extract** only and are flag-only (not inherited from `.env`). Production extraction sets `think: false` and leaves temperature unset; omit the flags to match that path. Chat is unchanged.
+On failure, the suite logs failing assertion ids and the raw model answer for each case (JSON for extract). `--trials` / `-k` (or `LOCALLAB_LIVE_EVAL_TRIALS`) repeats the full suite for pass^k; default is `1` (baselines / compares). Ship gate uses `3`. `--think` is flag-only (not inherited from `.env`) and applies to panel, trend, and extract; `--temperature` is extract-only. Production chat and extraction both set `think: false` (temperature unset on extract); omit the flags to match that path.
 
 ### Baselines and model comparisons
 
@@ -88,7 +89,11 @@ npm run test:live-eval -- --suite trend --model gemma4:26b-mlx --trials 3
 npm run test:live-eval -- --suite extract --model gemma4:26b-mlx --trials 3
 ```
 
-Extract gate runs must omit `--think` / `--temperature` so they match production (`think: false`, temperature unset). Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OLLAMA_MODEL` (local default: `gemma4:26b-mlx`); document any one-line override in the PR. Do not average suites, skip a gated suite, or ship on pass@1 folklore.
+Chat and extract gate runs must omit `--think` (and extract must also omit `--temperature`) so they match production (`think: false`; extract temperature unset). Ask Cursor with the `ship-gate-live-evals` skill. Gate tag must match `.env` `OLLAMA_MODEL` (local default: `gemma4:26b-mlx`); document any one-line override in the PR. Do not average suites, skip a gated suite, or ship on pass@1 folklore.
+
+### Chat think default (#11)
+
+Extraction and auto-generated trend insights always send top-level `think: false`. Panel/trend chat defaults to `think: false` too; toggle **reasoning** with the brain icon in the chat composer. Preference lives in SQLite `app_settings` with the selected model. The Model reasoning panel only appears when reasoning is on and the model streams thinking deltas. Non-thinking models ignore the flag. A/B with `--think true` on live evals if revisiting.
 
 ## Configuration
 

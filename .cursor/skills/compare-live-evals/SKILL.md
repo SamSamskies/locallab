@@ -23,7 +23,7 @@ Run the same Level 1 live assertions against each named model and record results
 - Case count follows the suite golden set (panel 3, trend 4, extract 2)
 - **Prompt**: production path only (chat guidance for panel/trend; `extractFromPdfText` for extract). If the user asks to A/B chat prompts, say variants are not wired—compare models, or add a new variant first.
 - **Temperature (extract only)**: if the user asks to A/B temperature on extract, each value is a run (`--temperature <n>`; omit for model default). Do not pass `--temperature` on panel/trend.
-- **Think (extract only)**: if the user asks to A/B Ollama `think` on extract, each value is a run (`--think true|false`; omit = production `false`). Do not pass `--think` on panel/trend.
+- **Think**: if the user asks to A/B Ollama `think`, each value is a run (`--think true|false`; omit = production `false`) on panel, trend, or extract.
 
 ### Suites
 
@@ -88,7 +88,7 @@ END=$(date +%s)
 echo "SUITE_WALL_CLOCK_S=$((END - START))"
 ```
 
-For an extract temperature or think A/B, add `--temperature <n>` and/or `--think true` on the non-default run (and put the harness flag in the log filename / card heading). Do not parallelize.
+For a think A/B (any suite) or extract temperature A/B, add `--think true|false` and/or `--temperature <n>` on the non-default run (and put the harness flag in the log filename / card heading). Do not parallelize.
 
 Notes:
 
