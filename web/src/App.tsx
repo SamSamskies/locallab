@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PanelListItem, PanelResponse } from "@shared/schema";
 import {
   deletePanel,
@@ -28,6 +28,7 @@ export default function App() {
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [model, setModel] = useState("");
   const [chatThink, setChatThink] = useState(false);
+  const chatThinkTouchedRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("Extracting markers with local LLM…");
   const [contentText, setContentText] = useState("");
@@ -46,6 +47,7 @@ export default function App() {
   }, []);
 
   const handleChatThinkChange = useCallback((next: boolean) => {
+    chatThinkTouchedRef.current = true;
     setChatThink(next);
     void updateSettings({ chatThink: next }).catch(() => {});
   }, []);
@@ -93,7 +95,9 @@ export default function App() {
         if (selected && m.some((entry) => entry.name === selected)) {
           setModel(selected);
         }
-        setChatThink(settings.chatThink);
+        if (!chatThinkTouchedRef.current) {
+          setChatThink(settings.chatThink);
+        }
       } finally {
         if (!cancelled) setModelsLoading(false);
       }
