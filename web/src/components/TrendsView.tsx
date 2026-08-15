@@ -590,6 +590,7 @@ export function TrendsView({
                       <ReferenceArea
                         y1={refLow}
                         y2={refHigh}
+                        ifOverflow="extendDomain"
                         fill="var(--ref-range-fill)"
                         stroke="var(--ref-range-stroke)"
                         strokeWidth={1}
