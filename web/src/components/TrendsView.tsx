@@ -79,9 +79,24 @@ function toChartRows(series: TrendSeries): ChartRow[] {
 }
 
 function latestRefRange(rows: ChartRow[]): { refLow: number | null; refHigh: number | null } {
-  const latest = rows[rows.length - 1];
-  if (!latest) return { refLow: null, refHigh: null };
-  return { refLow: latest.refLow, refHigh: latest.refHigh };
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i]!;
+    if (row.refLow != null || row.refHigh != null) {
+      return { refLow: row.refLow, refHigh: row.refHigh };
+    }
+  }
+  return { refLow: null, refHigh: null };
+}
+
+/** Open-ended ranges omit one bound so ReferenceArea extends to the plot edge. */
+function refAreaYBounds(
+  refLow: number | null,
+  refHigh: number | null,
+): { y1?: number; y2?: number } | null {
+  if (refLow != null && refHigh != null) return { y1: refLow, y2: refHigh };
+  if (refLow != null) return { y2: refLow }; // ≥ refLow → shade up to the top
+  if (refHigh != null) return { y1: refHigh }; // ≤ refHigh → shade down to the bottom
+  return null;
 }
 
 interface ChartTooltipProps {
@@ -347,6 +362,7 @@ export function TrendsView({
     [series],
   );
   const { refLow, refHigh } = useMemo(() => latestRefRange(chartRows), [chartRows]);
+  const refArea = useMemo(() => refAreaYBounds(refLow, refHigh), [refLow, refHigh]);
   const unit = chartRows[0]?.unit ?? markers.find((m) => m.name === selected)?.units[0] ?? null;
 
   const handleGetOverallInsights = async () => {
@@ -586,10 +602,11 @@ export function TrendsView({
                           : undefined
                       }
                     />
-                    {refLow != null && refHigh != null && (
+                    {refArea && (
                       <ReferenceArea
-                        y1={refLow}
-                        y2={refHigh}
+                        y1={refArea.y1}
+                        y2={refArea.y2}
+                        ifOverflow="extendDomain"
                         fill="var(--ref-range-fill)"
                         stroke="var(--ref-range-stroke)"
                         strokeWidth={1}
