@@ -75,27 +75,28 @@ export default function App() {
           );
         }
 
-        if (settingsResult.status !== "fulfilled") return;
-
-        const settings = settingsResult.value;
-        let selected = settings.selectedModel;
+        const settings =
+          settingsResult.status === "fulfilled" ? settingsResult.value : null;
+        let selected = settings?.selectedModel ?? null;
         const legacy = getStoredModel();
         if (!selected && legacy && m.some((entry) => entry.name === legacy)) {
           selected = legacy;
-          try {
-            await updateSettings({ selectedModel: legacy });
-            clearStoredModel();
-          } catch {
-            // Keep the in-memory selection even if persistence fails.
+          if (settings) {
+            try {
+              await updateSettings({ selectedModel: legacy });
+              clearStoredModel();
+            } catch {
+              // Keep the in-memory selection even if persistence fails.
+            }
           }
-        } else if (legacy) {
+        } else if (legacy && settings) {
           clearStoredModel();
         }
 
         if (selected && m.some((entry) => entry.name === selected)) {
           setModel(selected);
         }
-        if (!chatThinkTouchedRef.current) {
+        if (settings && !chatThinkTouchedRef.current) {
           setChatThink(settings.chatThink);
         }
       } finally {
