@@ -41,16 +41,30 @@ export default function App() {
     setPanels(list);
   }, []);
 
-  const handleModelChange = useCallback((next: string) => {
-    setModel(next);
-    void updateSettings({ selectedModel: next || null }).catch(() => {});
-  }, []);
+  const handleModelChange = useCallback(
+    (next: string) => {
+      const previous = model;
+      setModel(next);
+      void updateSettings({ selectedModel: next || null }).catch((e) => {
+        setModel(previous);
+        setError(e instanceof Error ? e.message : "Failed to save model preference");
+      });
+    },
+    [model],
+  );
 
-  const handleChatThinkChange = useCallback((next: boolean) => {
-    chatThinkTouchedRef.current = true;
-    setChatThink(next);
-    void updateSettings({ chatThink: next }).catch(() => {});
-  }, []);
+  const handleChatThinkChange = useCallback(
+    (next: boolean) => {
+      const previous = chatThink;
+      chatThinkTouchedRef.current = true;
+      setChatThink(next);
+      void updateSettings({ chatThink: next }).catch((e) => {
+        setChatThink(previous);
+        setError(e instanceof Error ? e.message : "Failed to save reasoning preference");
+      });
+    },
+    [chatThink],
+  );
 
   useEffect(() => {
     let cancelled = false;
